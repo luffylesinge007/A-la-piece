@@ -2,13 +2,19 @@ import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { Infer, v } from "convex/values";
 
-// default user roles. can add / remove based on the project as needed
+// ---------------------------------------------------------------------------
+// Roles & account types
+// ---------------------------------------------------------------------------
+export const ACCOUNT_TYPES = ["teen", "adult", "parent", "organization", "admin", "moderator"] as const;
+export const accountTypeValidator = v.union(...ACCOUNT_TYPES.map((t) => v.literal(t)));
+export type AccountType = Infer<typeof accountTypeValidator>;
+
+// default auth role kept for the template auth system
 export const ROLES = {
   ADMIN: "admin",
   USER: "user",
   MEMBER: "member",
 } as const;
-
 export const roleValidator = v.union(
   v.literal(ROLES.ADMIN),
   v.literal(ROLES.USER),
@@ -16,28 +22,267 @@ export const roleValidator = v.union(
 );
 export type Role = Infer<typeof roleValidator>;
 
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+export const MISSION_STATUS = ["published", "assigned", "in_progress", "completed", "cancelled"] as const;
+export const APPLICATION_STATUS = ["pending", "accepted", "declined", "withdrawn"] as const;
+export const BOOKING_STATUS = ["pending", "confirmed", "in_progress", "completed", "cancelled", "disputed"] as const;
+export const PAYMENT_STATUS = ["requires_payment", "processing", "held", "released", "refunded", "failed"] as const;
+export const TRANSACTION_TYPE = ["mission_payment", "platform_fee", "tip", "withdrawal", "refund"] as const;
+export const RISK_LEVEL = ["low", "medium", "high"] as const;
+export const ACCESS_LEVEL = ["allowed", "parental_approval", "adults_only", "forbidden"] as const;
+export const REPORT_STATUS = ["new", "in_progress", "resolved", "rejected"] as const;
+export const NOTIFICATION_TYPE = [
+  "mission", "message", "application", "payment", "quest", "xp", "badge", "challenge", "safety", "parent", "system",
+] as const;
+
+const missionStatusValidator = v.union(...MISSION_STATUS.map((s) => v.literal(s)));
+const applicationStatusValidator = v.union(...APPLICATION_STATUS.map((s) => v.literal(s)));
+const bookingStatusValidator = v.union(...BOOKING_STATUS.map((s) => v.literal(s)));
+const paymentStatusValidator = v.union(...PAYMENT_STATUS.map((s) => v.literal(s)));
+const transactionTypeValidator = v.union(...TRANSACTION_TYPE.map((t) => v.literal(t)));
+const riskLevelValidator = v.union(...RISK_LEVEL.map((r) => v.literal(r)));
+const reportStatusValidator = v.union(...REPORT_STATUS.map((s) => v.literal(s)));
+const notificationTypeValidator = v.union(...NOTIFICATION_TYPE.map((t) => v.literal(t)));
+
 const schema = defineSchema(
   {
-    // default auth tables using convex auth.
-    ...authTables, // do not remove or modify
+    // Default auth tables — do not remove or modify
+    ...authTables,
 
-    // the users table is the default users table that is brought in by the authTables
     users: defineTable({
-      name: v.optional(v.string()), // name of the user. do not remove
-      image: v.optional(v.string()), // image of the user. do not remove
-      email: v.optional(v.string()), // email of the user. do not remove
-      emailVerificationTime: v.optional(v.number()), // email verification time. do not remove
-      isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
+      name: v.optional(v.string()),
+      image: v.optional(v.string()),
+      email: v.optional(v.string()),
+      emailVerificationTime: v.optional(v.number()),
+      isAnonymous: v.optional(v.boolean()),
+      role: v.optional(roleValidator),
+      // À LA PIÈCE additions
+      accountType: v.optional(accountTypeValidator),
+      onboarded: v.optional(v.boolean()),
+    }).index("email", ["email"]),
 
-      role: v.optional(roleValidator), // role of the user. do not remove
-    }).index("email", ["email"]), // index for the email. do not remove or modify
+    // Extended per-role profile data
+    profiles: defineTable({
+      userId: v.id("users"),
+      accountType: accountTypeValidator,
+      firstName: v.string(),
+      lastName: v.optional(v.string()),
+      city: v.optional(v.string()),
+      bio: v.optional(v.string()),
+      avatarEmoji: v.optional(v.string()),
+      // teen only
+      birthDate: v.optional(v.string()), // ISO date — never exposed publicly
+      interests: v.optional(v.array(v.string())),
+      skills: v.optional(v.array(v.string())),
+      availability: v.optional(v.array(v.string())), // e.g. ["samedi_am","dimanche"]
+      // parent
+      linkedTeenIds: v.optional(v.array(v.id("users"))),
+      // verification flags (only real checks set these)
+      verifiedEmail: v.optional(v.boolean()),
+      verifiedPhone: v.optional(v.boolean()),
+      verifiedIdentity: v.optional(v.boolean()),
+      verifiedParent: v.optional(v.boolean()),
+      verifiedPayment: v.optional(v.boolean()),
+      // moderation
+      status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("blocked"))),
+    }).index("by_user", ["userId"]),
 
-    // add other tables here
+    settings: defineTable({
+      userId: v.id("users"),
+      profileVisibility: v.optional(v.union(v.literal("public"), v.literal("private"))),
+      showOnLeaderboard: v.optional(v.boolean()),
+      showFriends: v.optional(v.boolean()),
+      shareLocation: v.optional(v.union(v.literal("hidden"), v.literal("city"), v.literal("zone"), v.literal("friends"))),
+      allowMessages: v.optional(v.boolean()),
+      notificationsEnabled: v.optional(v.boolean()),
+      reduceAnimations: v.optional(v.boolean()),
+      language: v.optional(v.string()),
+      theme: v.optional(v.union(v.literal("light"), v.literal("dark"), v.literal("system"))),
+    }).index("by_user", ["userId"]),
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // Legal guardian link for minors
+    parentLinks: defineTable({
+      teenUserId: v.id("users"),
+      parentUserId: v.id("users"),
+      status: v.union(v.literal("pending"), v.literal("approved"), v.literal("declined")),
+      createdAt: v.number(),
+    }).index("by_teen", ["teenUserId"]).index("by_parent", ["parentUserId"]),
+
+    categories: defineTable({
+      slug: v.string(),
+      label: v.string(),
+      emoji: v.string(),
+      teenFriendly: v.boolean(),
+      riskLevel: riskLevelValidator,
+    }).index("by_slug", ["slug"]),
+
+    missions: defineTable({
+      publisherId: v.id("users"),
+      title: v.string(),
+      description: v.string(),
+      categorySlug: v.string(),
+      priceEuros: v.number(),
+      durationMin: v.number(),
+      scheduledDate: v.string(), // YYYY-MM-DD
+      scheduledTime: v.string(), // HH:mm
+      city: v.string(),
+      area: v.string(), // approximate area label, never exact address
+      status: missionStatusValidator,
+      riskLevel: riskLevelValidator,
+      allowedForTeens: v.boolean(), // computed by the safety engine at publish
+      accessNote: v.optional(v.string()), // why (parental approval / adults only…)
+      requiredSkills: v.optional(v.array(v.string())),
+      equipment: v.optional(v.string()),
+      safetyNotes: v.optional(v.string()),
+      teamSize: v.optional(v.number()),
+      requiresPin: v.optional(v.boolean()),
+      applicantCount: v.optional(v.number()), // drives popularity
+      createdAt: v.number(),
+      // precise address — only revealed to the assigned/confirmed user
+      exactAddress: v.optional(v.string()),
+    })
+      .index("by_status", ["status", "createdAt"])
+      .index("by_publisher", ["publisherId", "createdAt"])
+      .index("by_category", ["categorySlug"]),
+
+    applications: defineTable({
+      missionId: v.id("missions"),
+      teenId: v.id("users"),
+      message: v.optional(v.string()),
+      status: applicationStatusValidator,
+      createdAt: v.number(),
+    })
+      .index("by_mission", ["missionId", "createdAt"])
+      .index("by_teen", ["teenId", "createdAt"]),
+
+    bookings: defineTable({
+      missionId: v.id("missions"),
+      adultId: v.id("users"),
+      teenId: v.id("users"),
+      status: bookingStatusValidator,
+      priceEuros: v.number(),
+      platformFeeEuros: v.number(),
+      paymentId: v.optional(v.id("payments")),
+      pinCode: v.optional(v.string()),
+      pinExpiresAt: v.optional(v.number()),
+      checkInAt: v.optional(v.number()),
+      checkOutAt: v.optional(v.number()),
+      teenConfirmed: v.optional(v.boolean()), // teen accepted completion
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_mission", ["missionId"])
+      .index("by_teen", ["teenId", "createdAt"])
+      .index("by_adult", ["adultId", "createdAt"]),
+
+    payments: defineTable({
+      bookingId: v.id("bookings"),
+      payerId: v.id("users"),
+      provider: v.literal("stripe"),
+      providerRef: v.string(), // Stripe Checkout Session id
+      amountCents: v.number(),
+      feeCents: v.number(),
+      currency: v.string(),
+      status: paymentStatusValidator,
+      // receiptUrl: v.optional(v.string()), // enabled with a real Stripe account
+      createdAt: v.number(),
+      paidAt: v.optional(v.number()),
+      releasedAt: v.optional(v.number()),
+    })
+      .index("by_booking", ["bookingId"])
+      .index("by_provider_ref", ["providerRef"]),
+
+    wallets: defineTable({
+      userId: v.id("users"),
+      availableCents: v.number(),
+      pendingCents: v.number(),
+      totalEarnedCents: v.number(),
+    }).index("by_user", ["userId"]),
+
+    transactions: defineTable({
+      userId: v.id("users"),
+      type: transactionTypeValidator,
+      bookingId: v.optional(v.id("bookings")),
+      amountCents: v.number(), // signed: + credit, - debit
+      status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed"), v.literal("refunded")),
+      description: v.string(),
+      createdAt: v.number(),
+    }).index("by_user", ["userId", "createdAt"]),
+
+    conversations: defineTable({
+      missionId: v.optional(v.id("missions")),
+      bookingId: v.optional(v.id("bookings")),
+      participantIds: v.array(v.id("users")),
+      lastMessageAt: v.number(),
+      lastMessagePreview: v.optional(v.string()),
+    })
+      .index("by_mission", ["missionId"])
+      .index("by_last_message", ["lastMessageAt"]),
+
+    messages: defineTable({
+      conversationId: v.id("conversations"),
+      senderId: v.optional(v.id("users")), // null = system message
+      body: v.string(),
+      type: v.union(v.literal("user"), v.literal("system")),
+      createdAt: v.number(),
+    }).index("by_conversation", ["conversationId", "createdAt"]),
+
+    notifications: defineTable({
+      userId: v.id("users"),
+      type: notificationTypeValidator,
+      title: v.string(),
+      body: v.optional(v.string()),
+      link: v.optional(v.string()),
+      read: v.optional(v.boolean()),
+      createdAt: v.number(),
+    }).index("by_user", ["userId", "createdAt"]),
+
+    reviews: defineTable({
+      bookingId: v.id("bookings"),
+      missionId: v.id("missions"),
+      authorId: v.id("users"),
+      targetUserId: v.id("users"),
+      rating: v.number(), // 1–5
+      punctuality: v.optional(v.number()),
+      communication: v.optional(v.number()),
+      quality: v.optional(v.number()),
+      respect: v.optional(v.number()),
+      reliability: v.optional(v.number()),
+      comment: v.optional(v.string()),
+      createdAt: v.number(),
+    })
+      .index("by_target", ["targetUserId", "createdAt"])
+      .index("by_booking", ["bookingId"]),
+
+    reports: defineTable({
+      reporterId: v.id("users"),
+      targetType: v.union(v.literal("user"), v.literal("mission"), v.literal("message"), v.literal("booking")),
+      targetId: v.string(),
+      reason: v.string(),
+      description: v.optional(v.string()),
+      status: reportStatusValidator,
+      priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+      createdAt: v.number(),
+    }).index("by_status", ["status"]),
+
+    safetyEvents: defineTable({
+      userId: v.id("users"),
+      bookingId: v.optional(v.id("bookings")),
+      type: v.union(v.literal("sos"), v.literal("check_in"), v.literal("check_out"), v.literal("contact_alert")),
+      details: v.optional(v.string()),
+      createdAt: v.number(),
+    }).index("by_user", ["userId", "createdAt"]),
+
+    adminActions: defineTable({
+      adminId: v.id("users"),
+      action: v.string(),
+      targetType: v.optional(v.string()),
+      targetId: v.optional(v.string()),
+      details: v.optional(v.string()),
+      createdAt: v.number(),
+    }).index("by_created", ["createdAt"]),
   },
   {
     schemaValidation: false,
@@ -45,3 +290,8 @@ const schema = defineSchema(
 );
 
 export default schema;
+
+// ---------------------------------------------------------------------------
+// Inferred types
+// ---------------------------------------------------------------------------;
+export type MissionStatus = Infer<typeof missionStatusValidator>;
