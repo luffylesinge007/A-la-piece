@@ -14,21 +14,32 @@ import "./types/global.d.ts";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Onboarding = lazy(() => import("./pages/Onboarding.tsx"));
+const Home = lazy(() => import("./pages/Home.tsx"));
+const Missions = lazy(() => import("./pages/Missions.tsx"));
+const MissionDetail = lazy(() => import("./pages/MissionDetail.tsx"));
+const MissionCreate = lazy(() => import("./pages/MissionCreate.tsx"));
+const MyMissions = lazy(() => import("./pages/MyMissions.tsx"));
+const Applications = lazy(() => import("./pages/Applications.tsx"));
+const Bookings = lazy(() => import("./pages/Bookings.tsx"));
+const BookingDetail = lazy(() => import("./pages/BookingDetail.tsx"));
+const Messages = lazy(() => import("./pages/Messages.tsx"));
+const Wallet = lazy(() => import("./pages/Wallet.tsx"));
+const Profile = lazy(() => import("./pages/Profile.tsx"));
+const Safety = lazy(() => import("./pages/Safety.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="animate-pulse text-muted-foreground">Chargement…</div>
     </div>
   );
 }
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
-
-
 
 function RouteSyncer() {
   const location = useLocation();
@@ -53,7 +64,6 @@ function RouteSyncer() {
   return null;
 }
 
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <VlyToolbar />
@@ -66,16 +76,26 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route
                 path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
+                element={<AuthPage redirectAfterAuth="/accueil" />}
               />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
+              <Route path="/onboarding" element={<Onboarding />} />
+
+              {/* Protected app routes */}
+              <Route path="/accueil" element={<RequireAuth><Home /></RequireAuth>} />
+              <Route path="/missions" element={<RequireAuth><Missions /></RequireAuth>} />
+              <Route path="/missions/create" element={<RequireAuth><MissionCreate /></RequireAuth>} />
+              <Route path="/missions/:id" element={<RequireAuth><MissionDetail /></RequireAuth>} />
+              <Route path="/mes-missions" element={<RequireAuth><MyMissions /></RequireAuth>} />
+              <Route path="/candidatures" element={<RequireAuth><Applications /></RequireAuth>} />
+              <Route path="/reservations" element={<RequireAuth><Bookings /></RequireAuth>} />
+              <Route path="/reservations/:id" element={<RequireAuth><BookingDetail /></RequireAuth>} />
+              <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
+              <Route path="/messages/:id" element={<RequireAuth><Messages /></RequireAuth>} />
+              <Route path="/portefeuille" element={<RequireAuth><Wallet /></RequireAuth>} />
+              <Route path="/profil" element={<RequireAuth><Profile /></RequireAuth>} />
+              <Route path="/securite" element={<RequireAuth><Safety /></RequireAuth>} />
+              <Route path="/parametres" element={<RequireAuth><Settings /></RequireAuth>} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

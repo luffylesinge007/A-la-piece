@@ -201,6 +201,14 @@ const schema = defineSchema(
       totalEarnedCents: v.number(),
     }).index("by_user", ["userId"]),
 
+    savingsGoals: defineTable({
+      userId: v.id("users"),
+      label: v.string(),
+      targetCents: v.number(),
+      savedCents: v.number(),
+      createdAt: v.number(),
+    }).index("by_user", ["userId"]),
+
     transactions: defineTable({
       userId: v.id("users"),
       type: transactionTypeValidator,

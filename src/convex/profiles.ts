@@ -232,6 +232,7 @@ export const linkParent = mutation({
         "Aucun compte parent trouvé avec cet email. Le responsable doit d'abord créer un compte « Parent ».",
       );
     }
+    const myProfile = await getProfile(ctx, user._id);
     const parentProfile = await getProfile(ctx, parentUser._id);
     const teenId = user.accountType === "teen" ? user._id : parentProfile?.linkedTeenIds?.[0];
     if (!teenId) throw new Error("NO_TEEN");
@@ -257,7 +258,7 @@ export const linkParent = mutation({
       userId: parentUser._id,
       type: "parent",
       title: "Demande de liaison parentale",
-      body: `${profile?.firstName ?? "Un adolescent"} t'a désigné comme responsable légal.`,
+      body: `${myProfile?.firstName ?? "Un adolescent"} t'a désigné comme responsable légal.`,
       link: "/famille",
       read: false,
       createdAt: Date.now(),

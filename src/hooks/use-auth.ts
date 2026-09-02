@@ -5,15 +5,24 @@ import { useConvexAuth, useQuery } from "convex/react";
 export function useAuth() {
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth();
   const user = useQuery(api.users.currentUser);
+  const fullProfile = useQuery(
+    api.profiles.myProfile,
+    isAuthenticated ? {} : "skip",
+  );
   const { signIn, signOut } = useAuthActions();
 
-  // Derive isLoading directly from the dependencies instead of managing separate state
-  const isLoading = isAuthLoading || user === undefined;
+  const isLoading = isAuthLoading || user === undefined || (isAuthenticated && fullProfile === undefined);
 
   return {
     isLoading,
     isAuthenticated,
     user,
+    profile: fullProfile?.profile ?? null,
+    settings: fullProfile?.settings ?? null,
+    isMinor: fullProfile?.isMinor ?? false,
+    age: fullProfile?.age ?? null,
+    hasApprovedParent: fullProfile?.hasApprovedParent ?? false,
+    needsOnboarding: isAuthenticated && !isAuthLoading && user != null && !user.onboarded,
     signIn,
     signOut,
   };

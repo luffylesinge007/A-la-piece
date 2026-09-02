@@ -10,7 +10,7 @@ import {
   isAdultAccount,
   requireUser,
 } from "./lib/helpers";
-import { canTeenApply, evaluateTeenAccess } from "./lib/safety";
+import { canTeenApply, computeFee, evaluateTeenAccess } from "./lib/safety";
 
 /** Applications received on my missions (adult side). */
 export const listReceived = query({
@@ -177,6 +177,7 @@ export const accept = mutation({
       teenId: app.teenId,
       status: "pending", // confirmed after payment
       priceEuros: mission.priceEuros,
+      platformFeeEuros: computeFee(mission.priceEuros),
       createdAt: now,
       teenConfirmed: false,
     });

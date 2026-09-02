@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import {
   effectiveAge,
   getCurrentUser,
+  getProfile,
   hasApprovedParent,
   isAdultAccount,
   requireUser,
