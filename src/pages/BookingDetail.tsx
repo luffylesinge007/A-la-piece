@@ -43,6 +43,7 @@ export default function BookingDetail() {
   const cancel = useMutation(api.bookings.cancel);
   const openDispute = useMutation(api.bookings.openDispute);
   const releasePayment = useMutation(api.payments.releasePayment);
+  const triggerSOS = useMutation(api.safety.triggerSOS);
   const submitReview = useMutation(api.reviews.submitReview);
   const createCheckoutSession = useAction(api.payments.createCheckoutSession);
 
@@ -90,7 +91,10 @@ export default function BookingDetail() {
   const handlePay = async () => {
     setBusy("pay");
     try {
-      const result: any = await createCheckoutSession({ bookingId: booking._id });
+      const result: any = await createCheckoutSession({
+        bookingId: booking._id,
+        origin: window.location.origin,
+      });
       if (result?.checkoutUrl) {
         toast.info("Redirection vers Stripe…");
         window.location.assign(result.checkoutUrl);
@@ -462,8 +466,24 @@ export default function BookingDetail() {
                 <p className="font-semibold text-rose-600 dark:text-rose-400">Un souci pendant la mission ?</p>
                 <p className="text-muted-foreground">En danger immédiat : appelle le 112. Sinon, ouvre l'alerte SOS.</p>
               </div>
-              <Button variant="destructive" asChild>
-                <Link to={`/sos/${booking._id}`}>🚨 SOS</Link>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  action(
+                    "sos",
+                    async () => {
+                      const res: any = await triggerSOS({
+                        bookingId: booking._id,
+                        kind: "other",
+                      });
+                      toast.error(res?.message ?? "Alerte enregistrée.", { duration: 8000 });
+                    },
+                    "",
+                  )
+                }
+                disabled={busy === "sos"}
+              >
+                🚨 SOS
               </Button>
             </CardContent>
           </Card>

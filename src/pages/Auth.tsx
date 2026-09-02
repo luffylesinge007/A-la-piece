@@ -27,11 +27,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const asParam = searchParams.get("as");
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate(needsOnboarding ? "/onboarding" : redirect);
+      navigate(needsOnboarding ? `/onboarding${asParam ? `?as=${asParam}` : ""}` : redirect);
     }
-  }, [authLoading, isAuthenticated, needsOnboarding, navigate, redirect]);
+  }, [authLoading, isAuthenticated, needsOnboarding, navigate, redirect, asParam]);
 
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,7 +56,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
-      navigate(needsOnboarding ? "/onboarding" : redirect);
+      navigate(needsOnboarding ? `/onboarding${asParam ? `?as=${asParam}` : ""}` : redirect);
     } catch {
       setError("Le code saisi est incorrect. Vérifie ta boîte mail et réessaie.");
       setOtp("");

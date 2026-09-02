@@ -111,19 +111,19 @@ export default function Profile() {
             </div>
 
             {/* Skills */}
-            {profile.skills?.length > 0 && (
+            {(profile.skills?.length ?? 0) > 0 && (
               <div className="mt-4">
                 <p className="text-xs font-semibold text-muted-foreground">Compétences</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {profile.skills.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
+                  {profile.skills!.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
                 </div>
               </div>
             )}
-            {profile.availability?.length > 0 && (
+            {(profile.availability?.length ?? 0) > 0 && (
               <div className="mt-3">
                 <p className="text-xs font-semibold text-muted-foreground">Disponibilités</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {profile.availability.map((a: string) => <Badge key={a} variant="outline">{a}</Badge>)}
+                  {profile.availability!.map((a: string) => <Badge key={a} variant="outline">{a}</Badge>)}
                 </div>
               </div>
             )}

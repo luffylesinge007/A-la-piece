@@ -110,7 +110,7 @@ export const markHeld = mutation({
  * Requires STRIPE_SECRET_KEY — otherwise returns a clear "not configured" state.
  */
 export const createCheckoutSession = action({
-  args: { bookingId: v.id("bookings") },
+  args: { bookingId: v.id("bookings"), origin: v.optional(v.string()) },
   handler: async (ctx, args) => {
     if (!secretKey) {
       throw new Error(
@@ -127,6 +127,11 @@ export const createCheckoutSession = action({
     if (booking.paymentStatus === "held" || booking.paymentStatus === "released") {
       throw new Error("Cette réservation est déjà payée.");
     }
+
+    // Origin supplied by the client (validated) — falls back to APP_URL env.
+    const originArg = args.origin;
+    const origin =
+      originArg && /^https?:\/\//.test(originArg) ? originArg.replace(/\/$/, "") : APP_URL;
 
     const stripe = new Stripe(secretKey);
     const amountCents = Math.round(booking.priceEuros * 100);
@@ -152,8 +157,8 @@ export const createCheckoutSession = action({
         missionId: booking.missionId,
         teenId: booking.teenId,
       },
-      success_url: `${APP_URL}/reservations/${args.bookingId}?payment=success`,
-      cancel_url: `${APP_URL}/reservations/${args.bookingId}?payment=cancelled`,
+      success_url: `${origin}/reservations/${args.bookingId}?payment=success`,
+      cancel_url: `${origin}/reservations/${args.bookingId}?payment=cancelled`,
     });
 
     // Persist the payment record as "processing" until the webhook confirms it.

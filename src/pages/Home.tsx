@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useDemoSeed } from "@/hooks/use-demo-seed";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +18,7 @@ import {
 
 function TeenHome() {
   const { user, profile } = useAuth();
+  useDemoSeed();
   const stats = useQuery(api.stats.teenStats);
   const missions = useQuery(api.missions.listMissions, {});
   const apps = useQuery(api.missions.myApplications);

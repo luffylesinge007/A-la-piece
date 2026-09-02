@@ -10,10 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { APPLICATION_STATUS_META, eurosFromNumber, formatDateShort, friendlyError, formatDuration } from "@/lib/format";
 import { BadgeCheck, Check, Clock, MapPin, X } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 function AdultApplications() {
+  const navigate = useNavigate();
   const applications = useQuery(api.applications.listReceived);
   const accept = useMutation(api.applications.accept);
   const decline = useMutation(api.applications.decline);
@@ -22,8 +23,9 @@ function AdultApplications() {
   const handleAccept = async (id: string) => {
     setBusy(id);
     try {
-      await accept({ applicationId: id as any });
-      toast.success("Candidature acceptée 🎉 Passe au paiement pour confirmer la réservation.");
+      const bookingId = await accept({ applicationId: id as any });
+      toast.success("Candidature acceptée 🎉 Finalise avec le paiement sécurisé.");
+      navigate(`/reservations/${bookingId}`);
     } catch (error) {
       toast.error(friendlyError(error));
     } finally {

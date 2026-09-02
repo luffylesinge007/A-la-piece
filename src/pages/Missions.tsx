@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useDemoSeed } from "@/hooks/use-demo-seed";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
@@ -22,6 +23,7 @@ const SORTS = [
 
 export default function Missions() {
   const { user } = useAuth();
+  useDemoSeed();
   const isTeen = user?.accountType === "teen";
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
