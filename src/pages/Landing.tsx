@@ -89,33 +89,33 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
+      <section className="hero-band relative overflow-hidden text-white">
         <div className="hero-grid absolute inset-0" aria-hidden />
         <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 sm:pt-24">
           <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="secondary" className="mb-5 gap-1.5 px-3 py-1.5 text-xs">
-              <Sparkles className="size-3.5 text-primary" />
+            <Badge variant="outline" className="mb-5 gap-1.5 border-white/25 bg-white/10 px-3 py-1.5 text-xs text-white backdrop-blur-sm">
+              <Sparkles className="size-3.5 text-coin" />
               La plateforme des petits coups de main qui comptent
             </Badge>
             <h1 className="font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
               Tes petits coups de main deviennent de{" "}
-              <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-coin via-[#FFE9B8] to-white bg-clip-text text-transparent">
                 vraies opportunités
               </span>
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+            <p className="mx-auto mt-5 max-w-xl text-lg text-white/80">
               À LA PIÈCE met en relation des personnes qui ont besoin d'aide avec des adolescents
               prêts à rendre service — avec un cadre sécurisé, transparent et payé au juste prix.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button size="lg" className="h-12 px-7 text-base" asChild>
+              <Button size="lg" className="h-12 bg-white px-7 text-base text-primary shadow-lg hover:bg-white/90 hover:text-primary" asChild>
                 <Link to="/auth?mode=signup&as=teen">🧑‍🎓 Je suis ado — gagner de l'argent</Link>
               </Button>
-              <Button size="lg" variant="outline" className="h-12 px-7 text-base" asChild>
+              <Button size="lg" variant="outline" className="h-12 border-white/40 bg-white/5 px-7 text-base text-white hover:bg-white/10 hover:text-white" asChild>
                 <Link to="/auth?mode=signup&as=adult">👨 Je cherche de l'aide</Link>
               </Button>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
+            <p className="mt-4 text-xs text-white/65">
               🛡️ Missions filtrées par âge · Autorisation parentale intégrée · Paiement sécurisé Stripe
             </p>
           </div>
@@ -187,14 +187,14 @@ export default function Landing() {
             </div>
             <div>
               <div className="mb-5 flex items-center gap-2">
-                <span className="grid size-9 place-items-center rounded-xl bg-sky-500/10 text-lg">👨</span>
+                <span className="grid size-9 place-items-center rounded-xl bg-brand/10 text-lg">👨</span>
                 <h3 className="font-display text-xl font-bold">Pour les adultes</h3>
               </div>
               <div className="space-y-4">
                 {ADULT_STEPS.map((s, i) => (
                   <div key={s.title} className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sky-500/10 text-sm font-bold text-sky-600 dark:text-sky-400">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand/10 text-sm font-bold text-brand">
                         {i + 1}
                       </span>
                       {i < ADULT_STEPS.length - 1 && <span className="mt-1 h-full w-px bg-border" />}

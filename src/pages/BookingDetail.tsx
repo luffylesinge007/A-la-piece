@@ -246,9 +246,9 @@ export default function BookingDetail() {
         )}
 
         {booking.payment?.status === "processing" && (
-          <Card className="card-shadow border-sky-500/40 bg-sky-500/5">
+          <Card className="card-shadow border-brand/40 bg-brand/5">
             <CardContent className="flex items-center gap-3 p-4 text-sm">
-              <Lock className="size-4 text-sky-500" />
+              <Lock className="size-4 text-brand" />
               Paiement en cours de confirmation par Stripe… Cette page se met à jour automatiquement.
             </CardContent>
           </Card>

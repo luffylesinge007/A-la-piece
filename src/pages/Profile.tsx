@@ -69,7 +69,7 @@ export default function Profile() {
       <div className="mx-auto max-w-3xl space-y-5">
         {/* Header card */}
         <Card className="card-shadow-lg overflow-hidden border-border/60">
-          <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-violet-500/20" />
+          <div className="h-24 bg-gradient-to-r from-primary/25 via-primary/10 to-brand/25" />
           <CardContent className="-mt-10 p-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="flex items-end gap-4">

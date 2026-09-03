@@ -164,8 +164,8 @@ export default function MissionDetail() {
                 </div>
               )}
               {mission.safetyNotes && (
-                <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3">
-                  <p className="flex items-center gap-2 font-semibold text-sky-700 dark:text-sky-400">
+                <div className="rounded-xl border border-brand/30 bg-brand/5 p-3">
+                  <p className="flex items-center gap-2 font-semibold text-brand">
                     <ShieldCheck className="size-4" /> Informations de sécurité
                   </p>
                   <p className="mt-1 text-muted-foreground">{mission.safetyNotes}</p>
