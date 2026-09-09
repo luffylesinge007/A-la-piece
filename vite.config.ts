@@ -18,42 +18,29 @@ export default defineConfig({
     // Optimize chunk splitting
     rollupOptions: {
       output: {
-        // Manual chunk splitting for better caching and lazy loading
-        manualChunks: {
-          // Vendor chunks for large libraries
-          'react-vendor': ['react', 'react-dom', 'react-router'],
-          'convex-vendor': ['convex'],
-          // Large UI library chunks
-          'radix-ui': [
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-collapsible',
-            '@radix-ui/react-context-menu',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-hover-card',
-            '@radix-ui/react-label',
-            '@radix-ui/react-menubar',
-            '@radix-ui/react-navigation-menu',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-progress',
-            '@radix-ui/react-radio-group',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-select',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toggle',
-            '@radix-ui/react-toggle-group',
-            '@radix-ui/react-tooltip',
-          ],
+        // Manual chunk splitting for better caching and lazy loading.
+        // Function form (not object form): object manualChunks is rejected by
+        // rolldown-based bundlers, which broke the production build with
+        // "Importing a module script failed".
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
           // Heavy optional libraries - separate chunks for better lazy loading
-          'framer-motion': ['framer-motion'],
-          'charts': ['recharts'],
-          'forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          if (id.includes('framer-motion')) return 'framer-motion';
+          if (id.includes('recharts') || /[\\/]d3-[a-z]/.test(id) || id.includes('victory-vendor')) return 'charts';
+          if (id.includes('react-hook-form') || id.includes('@hookform') || /[\\/]zod[\\/]/.test(id)) return 'forms';
+          // Large UI library chunks
+          if (id.includes('@radix-ui')) return 'radix-ui';
+          // Vendor chunks for large libraries
+          if (/[\\/]convex[\\/]/.test(id)) return 'convex-vendor';
+          if (
+            /[\\/]node_modules[\\/]react[\\/]/.test(id) ||
+            id.includes('react-dom') ||
+            id.includes('react-router') ||
+            id.includes('scheduler')
+          ) {
+            return 'react-vendor';
+          }
+          return undefined;
         },
         // Optimize chunk size
         chunkFileNames: 'assets/[name]-[hash].js',
