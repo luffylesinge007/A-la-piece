@@ -2,13 +2,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
+import { MissionTypeBadge } from "@/components/mission-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APPLICATION_STATUS_META, eurosFromNumber, formatDateShort, friendlyError, formatDuration } from "@/lib/format";
-import { BadgeCheck, Check, Clock, MapPin, X } from "lucide-react";
+import { BadgeCheck, Check, Clock, MapPin, Star, Trophy, X, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -16,6 +18,7 @@ import { toast } from "sonner";
 function AdultApplications() {
   const navigate = useNavigate();
   const applications = useQuery(api.applications.listReceived);
+  const missions = useQuery(api.missions.myMissions);
   const accept = useMutation(api.applications.accept);
   const decline = useMutation(api.applications.decline);
   const [busy, setBusy] = useState<string | null>(null);
@@ -24,7 +27,7 @@ function AdultApplications() {
     setBusy(id);
     try {
       const bookingId = await accept({ applicationId: id as any });
-      toast.success("Candidature acceptée 🎉 Finalise avec le paiement sécurisé.");
+      toast.success("Candidature acceptée 🎉 Finalisez avec le paiement sécurisé.");
       navigate(`/reservations/${bookingId}`);
     } catch (error) {
       toast.error(friendlyError(error));
@@ -53,21 +56,23 @@ function AdultApplications() {
     );
   }
 
-  const pending = applications.filter((a) => a.status === "pending");
-  const processed = applications.filter((a) => a.status !== "pending");
+  const missionTypeOf = (missionId: string) =>
+    missions?.find((m: any) => m._id === missionId)?.missionType ?? "verified";
+
+  const pending = applications.filter((a: any) => a.status === "pending");
+  const processed = applications.filter((a: any) => a.status !== "pending");
 
   return (
     <div className="space-y-5">
       <section>
         <h2 className="mb-3 font-display text-lg font-bold">⏳ À traiter ({pending.length})</h2>
         {pending.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-              <span className="text-3xl">📭</span>
-              <p className="font-semibold">Aucune candidature en attente</p>
-              <p className="text-sm text-muted-foreground">Les nouvelles candidatures apparaîtront ici.</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            emoji="📭"
+            title="Aucune candidature en attente"
+            description="Publiez une mission pour recevoir vos premières candidatures — les 5 premiers intéressés peuvent postuler sur chaque mission vérifiée."
+            actions={[{ label: "Publier une mission", to: "/missions/create" }]}
+          />
         ) : (
           <div className="space-y-3">
             {pending.map((a: any) => (
@@ -85,7 +90,16 @@ function AdultApplications() {
                             <BadgeCheck className="size-3.5" /> vérifié
                           </span>
                         )}
-                        <Badge variant="secondary" className="text-[11px]">Ado</Badge>
+                        {/* Gamified trust row */}
+                        <span className="flex items-center gap-1 rounded-full bg-coin/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-coin">
+                          <Trophy className="size-3" /> Niv. {a.teen?.level ?? 1}
+                        </span>
+                        <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">
+                          <Star className="size-3 text-amber-500" /> {a.teen?.averageRating ?? "—"}/5 ({a.teen?.reviewCount ?? 0})
+                        </span>
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">
+                          {a.teen?.missionsDone ?? 0} missions
+                        </span>
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {a.teen?.city} {a.teen?.availability?.length ? `· dispo : ${a.teen.availability.slice(0, 3).join(", ")}` : ""}
@@ -113,7 +127,7 @@ function AdultApplications() {
                   <Separator className="my-4" />
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => handleAccept(a._id)} disabled={busy === a._id}>
-                      <Check className="size-4" /> Accepter
+                      <Check className="size-4" /> Sélectionner
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => handleDecline(a._id)} disabled={busy === a._id}>
                       <X className="size-4" /> Refuser
@@ -170,16 +184,12 @@ function TeenApplications() {
 
   if (apps.length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-          <span className="text-4xl">🌱</span>
-          <p className="font-display text-lg font-bold">Aucune candidature pour l'instant</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Explore les missions ouvertes et candidate : la première réponse arrive souvent vite !
-          </p>
-          <Button asChild><Link to="/missions">Explorer les missions</Link></Button>
-        </CardContent>
-      </Card>
+      <EmptyState
+        emoji="🌱"
+        title="Aucune candidature pour l'instant"
+        description="Explore les missions ouvertes et candidate : la première réponse arrive souvent vite ! Les missions rapides ⚡ sont prises au premier clic."
+        actions={[{ label: "Explorer les missions", to: "/missions" }]}
+      />
     );
   }
 
@@ -206,6 +216,7 @@ function TeenApplications() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold">{a.mission.title}</p>
+                <MissionTypeBadge type={a.mission.missionType} />
                 <Badge variant="secondary" className={APPLICATION_STATUS_META[a.application.status]?.className}>
                   {APPLICATION_STATUS_META[a.application.status]?.label}
                 </Badge>
@@ -245,7 +256,7 @@ export default function Applications() {
           <p className="mt-1 text-sm text-muted-foreground">
             {isTeen
               ? "Suis l'état de chaque candidature envoyée."
-              : "Sélectionne la personne la mieux adaptée — profil, compétences, disponibilités."}
+              : "Comparez les profils : niveau, note, missions réalisées, compétences — puis sélectionnez."}
           </p>
         </div>
         {isTeen ? <TeenApplications /> : <AdultApplications />}

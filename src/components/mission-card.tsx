@@ -6,12 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ACCESS_META } from "@/convex/lib/safety";
-import { eurosFromNumber, formatDateShort, formatDuration, friendlyError, APPLICATION_STATUS_META } from "@/lib/format";
+import { eurosFromNumber, formatDateShort, formatDuration, friendlyError } from "@/lib/format";
 import { useMutation } from "convex/react";
-import { Clock, MapPin, Users } from "lucide-react";
+import { Clock, MapPin, Users, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface MissionData {
   _id: Id<"missions">;
@@ -29,6 +30,10 @@ interface MissionData {
   canApply?: boolean;
   isMine?: boolean;
   applicantCount?: number;
+  missionType?: "quick" | "verified";
+  maxApplicants?: number;
+  appsFull?: boolean;
+  claimable?: boolean;
 }
 
 export function AccessBadge({ level }: { level: keyof typeof ACCESS_META }) {
@@ -41,16 +46,36 @@ export function AccessBadge({ level }: { level: keyof typeof ACCESS_META }) {
   );
 }
 
+/** ⚡ / 🛡️ mission-type chip. */
+export function MissionTypeBadge({ type, className }: { type?: "quick" | "verified"; className?: string }) {
+  if (type === "quick") {
+    return (
+      <span className={cn("inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400", className)}>
+        <Zap className="size-3" /> Mission rapide
+      </span>
+    );
+  }
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand dark:text-coin", className)}>
+      🛡️ Mission vérifiée
+    </span>
+  );
+}
+
 export function MissionCard({ mission, mine }: { mission: MissionData; mine?: boolean }) {
   const { user, hasApprovedParent } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const apply = useMutation(api.applications.apply);
+  const claim = useMutation(api.applications.claimQuick);
 
   const cat = mission.category;
   const isTeen = user?.accountType === "teen";
+  const isQuick = mission.missionType === "quick";
+  const type = mission.missionType ?? "verified";
 
   const handleApply = async () => {
     setSending(true);
@@ -64,6 +89,19 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
       toast.error(friendlyError(error));
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    try {
+      await claim({ missionId: mission._id });
+      toast.success("⚡ Mission prise ! Elle est à toi.");
+      navigate("/reservations");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -90,20 +128,36 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
           <span className="flex items-center gap-1">📅 {formatDateShort(mission.scheduledDate)} · {mission.scheduledTime}</span>
           <span className="flex items-center gap-1"><MapPin className="size-3.5" /> {mission.area}, {mission.city}</span>
           {mission.applicantCount !== undefined && mission.applicantCount > 0 && (
-            <span className="flex items-center gap-1"><Users className="size-3.5" /> {mission.applicantCount}</span>
+            <span className="flex items-center gap-1"><Users className="size-3.5" /> {mission.applicantCount}{mission.maxApplicants ? `/${mission.maxApplicants}` : ""}</span>
           )}
         </p>
 
         <div className="mt-3 flex flex-1 flex-wrap items-center gap-2">
+          <MissionTypeBadge type={type} />
           <AccessBadge level={mission.access.level} />
           {mine && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">Ta mission</span>}
+          {mine && isQuick && mission.status === "assigned" && (
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              ⚡ Mission prise !
+            </span>
+          )}
         </div>
 
         <div className="mt-4 flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" asChild>
             <Link to={`/missions/${mission._id}`}>Détails</Link>
           </Button>
-          {!mine && isTeen && mission.canApply && (
+          {!mine && isTeen && isQuick && mission.claimable && (
+            <Button size="sm" className="flex-1" onClick={handleClaim} disabled={claiming}>
+              {claiming ? "…" : "⚡ Je prends"}
+            </Button>
+          )}
+          {!mine && isTeen && isQuick && !mission.claimable && mission.status === "assigned" && (
+            <Button size="sm" variant="secondary" className="flex-1" disabled>
+              Mission prise
+            </Button>
+          )}
+          {!mine && isTeen && !isQuick && mission.canApply && (
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button size="sm" className="flex-1">Candidater</Button>
@@ -137,9 +191,14 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
               </SheetContent>
             </Sheet>
           )}
+          {!mine && isTeen && !isQuick && mission.appsFull && (
+            <Button size="sm" variant="secondary" className="flex-1" disabled>
+              Complet
+            </Button>
+          )}
           {mine && (
             <Button variant="secondary" size="sm" className="flex-1" asChild>
-              <Link to="/candidatures">Candidatures reçues</Link>
+              <Link to="/candidatures">{isQuick && mission.status === "assigned" ? "Voir la réservation" : "Candidatures reçues"}</Link>
             </Button>
           )}
         </div>

@@ -14,6 +14,12 @@ import type { Id } from "./_generated/dataModel";
 /** Public shape of a mission as seen in lists — no exact address. */
 function publicMission(doc: any, viewerAge: number | null, viewerHasParent: boolean, viewerId?: Id<"users">) {
   const access = evaluateTeenAccess(doc, viewerAge);
+  const missionType = doc.missionType ?? "verified";
+  const maxApplicants = doc.maxApplicants ?? 5;
+  // A verified mission is full when the application cap is reached.
+  const appsFull = missionType === "verified" && (doc.applicantCount ?? 0) >= maxApplicants;
+  // A quick mission is claimable only while still published.
+  const claimable = missionType === "quick" && doc.status === "published";
   return {
     _id: doc._id,
     title: doc.title,
@@ -28,6 +34,11 @@ function publicMission(doc: any, viewerAge: number | null, viewerHasParent: bool
     area: doc.area, // approximate zone only
     status: doc.status,
     riskLevel: doc.riskLevel,
+    missionType,
+    maxApplicants,
+    appsFull,
+    claimable: claimable && doc.publisherId !== viewerId,
+    claimedBy: doc.claimedBy ?? null,
     requiredSkills: doc.requiredSkills ?? [],
     equipment: doc.equipment,
     safetyNotes: doc.safetyNotes,
@@ -37,7 +48,11 @@ function publicMission(doc: any, viewerAge: number | null, viewerHasParent: bool
     publisherId: doc.publisherId,
     createdAt: doc.createdAt,
     access,
-    canApply: doc.publisherId !== viewerId && canTeenApply(access, viewerHasParent),
+    canApply:
+      doc.publisherId !== viewerId &&
+      missionType === "verified" &&
+      !appsFull &&
+      canTeenApply(access, viewerHasParent),
     isMine: doc.publisherId === viewerId,
   };
 }
@@ -50,6 +65,7 @@ export const listMissions = query({
     maxPrice: v.optional(v.number()),
     maxDuration: v.optional(v.number()),
     city: v.optional(v.string()),
+    missionType: v.optional(v.union(v.literal("quick"), v.literal("verified"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -73,6 +89,7 @@ export const listMissions = query({
     if (args.maxDuration !== undefined)
       missions = missions.filter((m) => m.durationMin <= args.maxDuration!);
     if (args.city) missions = missions.filter((m) => m.city.toLowerCase() === args.city!.toLowerCase());
+    if (args.missionType) missions = missions.filter((m) => (m.missionType ?? "verified") === args.missionType);
     if (args.search) {
       const s = args.search.toLowerCase();
       missions = missions.filter(
@@ -202,6 +219,8 @@ export const createMission = mutation({
     scheduledTime: v.string(),
     city: v.string(),
     area: v.string(),
+    missionType: v.optional(v.union(v.literal("quick"), v.literal("verified"))),
+    maxApplicants: v.optional(v.number()),
     requiredSkills: v.optional(v.array(v.string())),
     equipment: v.optional(v.string()),
     safetyNotes: v.optional(v.string()),
@@ -261,6 +280,8 @@ export const createMission = mutation({
       area: args.area.trim(),
       status: "published",
       riskLevel: risk,
+      missionType: args.missionType ?? "verified",
+      maxApplicants: Math.max(1, args.maxApplicants ?? 5),
       allowedForTeens,
       accessNote: allowedForTeens ? accessForTeens.reasons[0] : "Réservée aux majeurs.",
       requiredSkills: args.requiredSkills,

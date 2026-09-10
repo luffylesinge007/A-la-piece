@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
-import { AccessBadge } from "@/components/mission-card";
+import { AccessBadge, MissionTypeBadge } from "@/components/mission-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ACCESS_META, getCategory } from "@/convex/lib/safety";
 import { eurosFromNumber, formatDate, formatDuration, friendlyError } from "@/lib/format";
 import {
-  ArrowLeft, BadgeCheck, Ban, Clock, Lock, MapPin, Send, ShieldCheck, TriangleAlert, Users,
+  ArrowLeft, BadgeCheck, Ban, Clock, Lock, MapPin, Send, ShieldCheck, TriangleAlert, Users, Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -31,9 +31,11 @@ export default function MissionDetail() {
   );
   const [message, setMessage] = useState("");
   const [applying, setApplying] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const apply = useMutation(api.applications.apply);
+  const claim = useMutation(api.applications.claimQuick);
   const cancelMission = useMutation(api.missions.cancelMission);
 
   if (mission === undefined) {
@@ -81,6 +83,19 @@ export default function MissionDetail() {
     }
   };
 
+  const handleClaim = async () => {
+    setClaiming(true);
+    try {
+      await claim({ missionId: mission._id });
+      toast.success("⚡ Mission prise ! Elle est à toi.");
+      navigate("/reservations");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -109,6 +124,7 @@ export default function MissionDetail() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{cat.label}</Badge>
+                  <MissionTypeBadge type={(mission as any).missionType} />
                   {mission.status !== "published" && <Badge variant="outline">{mission.status}</Badge>}
                 </div>
                 <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight">{mission.title}</h1>
@@ -252,7 +268,7 @@ export default function MissionDetail() {
         {mission.isMine ? (
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" asChild>
-              <Link to="/candidatures">Voir les candidatures ({mission.applicantCount})</Link>
+              <Link to="/candidatures">Voir les candidatures ({mission.applicantCount}{(mission as any).missionType !== "quick" ? `/${(mission as any).maxApplicants ?? 5}` : ""})</Link>
             </Button>
             {(mission.status === "published" || mission.status === "assigned") && (
               <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
@@ -266,6 +282,28 @@ export default function MissionDetail() {
               <CardContent className="flex items-center justify-between gap-3 p-4">
                 <p className="text-sm"><strong>Candidature envoyée</strong> — statut : {mission.myApplicationStatus === "accepted" ? "acceptée ✅" : "en attente ⏳"}</p>
                 <Button variant="outline" size="sm" asChild><Link to="/candidatures">Suivre</Link></Button>
+              </CardContent>
+            </Card>
+          ) : (mission as any).missionType === "quick" && (mission as any).claimable ? (
+            <Button size="lg" className="h-14 w-full animate-pulse text-base" onClick={handleClaim} disabled={claiming}>
+              <Zap className="size-5" /> {claiming ? "Prise en cours…" : "⚡ JE PRENDS LA MISSION"}
+            </Button>
+          ) : (mission as any).missionType === "quick" && mission.status !== "published" ? (
+            <Card className="border-emerald-500/30 bg-emerald-500/5">
+              <CardContent className="flex items-center gap-3 p-4">
+                <Zap className="size-5 shrink-0 text-emerald-500" />
+                <p className="text-sm">
+                  <strong>⚡ Mission prise !</strong> Cette mission a été attribuée à un adolescent. Les autres ne peuvent plus la prendre.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (mission as any).missionType !== "quick" && (mission as any).appsFull ? (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="flex items-center gap-3 p-4">
+                <Users className="size-5 shrink-0 text-amber-500" />
+                <p className="text-sm">
+                  <strong>Les candidatures sont complètes</strong> ({(mission as any).maxApplicants ?? 5}/{(mission as any).maxApplicants ?? 5}). Tu peux encore consulter la mission mais plus candidater.
+                </p>
               </CardContent>
             </Card>
           ) : mission.access.level === "adults_only" || mission.access.level === "forbidden" ? (

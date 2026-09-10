@@ -49,6 +49,7 @@ export const seedDemoMissions = mutation({
 
     const demo = [
       {
+        type: "quick",
         title: "Promenade de chien",
         description:
           "Je cherche quelqu'un de fiable pour promener mon chien Rex (golden retriever, très gentil) autour du parc. Il tire un peu au début, le temps de passer l'excitation. La laisse et des sachets sont fournis.",
@@ -66,6 +67,7 @@ export const seedDemoMissions = mutation({
         address: "12 rue de l'Exemple, Bordeaux",
       },
       {
+        type: "quick",
         title: "Aide au jardinage",
         description:
           "Désherber le devant de la maison et arroser les tomates. Les gants et l'arrosoir sont prêts dans l'abri. Si tu connais les plantes, encore mieux — mais ce n'est pas obligatoire.",
@@ -83,6 +85,7 @@ export const seedDemoMissions = mutation({
         address: "8 allée des Tilleuls, Bordeaux",
       },
       {
+        type: "verified",
         title: "Cours d'informatique — tablette",
         description:
           "Ma mère de 78 ans a besoin d'aide pour utiliser sa tablette : appels vidéo, photos, messages. Il faut de la patience et le sourire. Session d'essai possible.",
@@ -100,6 +103,7 @@ export const seedDemoMissions = mutation({
         address: "24 rue Sainte-Catherine, Bordeaux",
       },
       {
+        type: "quick",
         title: "Courses hebdomadaires",
         description:
           "Faire les courses avec la liste que je te donne (une quinzaine d'articles) et les rapporter. Je règle les courses en plus de ta rémunération. Panier pas trop lourd, j'ai un chariot.",
@@ -117,6 +121,7 @@ export const seedDemoMissions = mutation({
         address: "Rue du marché, Bordeaux",
       },
       {
+        type: "verified",
         title: "Tonte de pelouse",
         description:
           "Tondre une pelouse de 200 m² avec la tondeuse électrique de la maison. Surfaces simples, peu d'obstacles. La mission demande de la rigueur sur les bordures.",
@@ -134,6 +139,7 @@ export const seedDemoMissions = mutation({
         address: "3 impasse des Acacias, Bordeaux",
       },
       {
+        type: "verified",
         title: "Garde d'enfants en soirée",
         description:
           "Garder deux enfants (4 et 7 ans) de 19h à 22h : dîner préparé, devoir de lecture, coucher à 20h30. Expérience demandée avec les jeunes enfants.",
@@ -156,6 +162,8 @@ export const seedDemoMissions = mutation({
       const m = demo[i];
       const publisherId = adultIds[i % adultIds.length];
       const risk = m.categorySlug === "babysitting" ? "high" : "low";
+      // Mix of quick (first-to-claim) and verified (application) demo missions.
+      const missionType = m.type === "quick" ? "quick" : "verified";
       const access = evaluateTeenAccess(
         {
           categorySlug: m.categorySlug,
@@ -179,6 +187,8 @@ export const seedDemoMissions = mutation({
         area: m.area,
         status: "published",
         riskLevel: risk as "low" | "medium" | "high",
+        missionType,
+        maxApplicants: 5,
         allowedForTeens: access.level !== "adults_only",
         accessNote: access.reasons[0],
         requiredSkills: m.skills,

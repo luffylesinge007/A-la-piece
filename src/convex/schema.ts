@@ -36,6 +36,9 @@ export const REPORT_STATUS = ["new", "in_progress", "resolved", "rejected"] as c
 export const NOTIFICATION_TYPE = [
   "mission", "message", "application", "payment", "quest", "xp", "badge", "challenge", "safety", "parent", "system",
 ] as const;
+// Mission types: ⚡ quick (first teen to claim wins) / 🛡️ verified (adult picks among capped applications)
+export const MISSION_TYPES = ["quick", "verified"] as const;
+export const missionTypeValidator = v.union(...MISSION_TYPES.map((t) => v.literal(t)));
 
 const missionStatusValidator = v.union(...MISSION_STATUS.map((s) => v.literal(s)));
 const applicationStatusValidator = v.union(...APPLICATION_STATUS.map((s) => v.literal(s)));
@@ -131,6 +134,13 @@ const schema = defineSchema(
       area: v.string(), // approximate area label, never exact address
       status: missionStatusValidator,
       riskLevel: riskLevelValidator,
+      // ⚡ quick / 🛡️ verified — two distinct flows
+      missionType: v.optional(missionTypeValidator),
+      // quick missions: id of the teen who claimed it
+      claimedBy: v.optional(v.id("users")),
+      claimedAt: v.optional(v.number()),
+      // verified missions: max applications taken into account (default 5)
+      maxApplicants: v.optional(v.number()),
       allowedForTeens: v.boolean(), // computed by the safety engine at publish
       accessNote: v.optional(v.string()), // why (parental approval / adults only…)
       requiredSkills: v.optional(v.array(v.string())),

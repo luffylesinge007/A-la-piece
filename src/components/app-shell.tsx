@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Bell, Compass, FileText, Home, LayoutGrid, LogOut, MessageSquare,
-  Moon, Shield, Sun, Wallet, User, CalendarCheck, Settings, Sparkles,
+  Moon, Plus, Shield, Sun, Wallet, User, CalendarCheck, Settings, Zap,
 } from "lucide-react";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -24,12 +24,17 @@ interface NavItem {
   mobile?: boolean;
 }
 
+/**
+ * Role-distinct navigation.
+ * ADO: discovery-first (Explorer + Candidatures prominent).
+ * ADULTE: efficiency-first (Publier + Mes missions prominent).
+ */
 function navFor(type: AccountType | undefined): NavItem[] {
   if (type === "teen") {
     return [
       { to: "/accueil", label: "Accueil", icon: <Home className="size-4" />, mobile: true },
-      { to: "/missions", label: "Missions", icon: <Compass className="size-4" />, mobile: true },
-      { to: "/candidatures", label: "Candidatures", icon: <FileText className="size-4" /> },
+      { to: "/missions", label: "Explorer", icon: <Compass className="size-4" />, mobile: true },
+      { to: "/candidatures", label: "Candidatures", icon: <FileText className="size-4" />, mobile: true },
       { to: "/reservations", label: "Réservations", icon: <CalendarCheck className="size-4" />, mobile: true },
       { to: "/messages", label: "Messages", icon: <MessageSquare className="size-4" />, mobile: true },
       { to: "/portefeuille", label: "Portefeuille", icon: <Wallet className="size-4" /> },
@@ -40,15 +45,23 @@ function navFor(type: AccountType | undefined): NavItem[] {
   return [
     { to: "/accueil", label: "Accueil", icon: <Home className="size-4" />, mobile: true },
     { to: "/missions", label: "Explorer", icon: <Compass className="size-4" /> },
-    { to: "/missions/create", label: "Publier", icon: <Sparkles className="size-4" /> },
-    { to: "/mes-missions", label: "Mes missions", icon: <LayoutGrid className="size-4" /> },
+    { to: "/missions/create", label: "Publier", icon: <Plus className="size-4" /> },
+    { to: "/mes-missions", label: "Mes missions", icon: <LayoutGrid className="size-4" />, mobile: true },
     { to: "/candidatures", label: "Candidatures", icon: <FileText className="size-4" />, mobile: true },
     { to: "/reservations", label: "Réservations", icon: <CalendarCheck className="size-4" />, mobile: true },
     { to: "/messages", label: "Messages", icon: <MessageSquare className="size-4" />, mobile: true },
     { to: "/portefeuille", label: "Portefeuille", icon: <Wallet className="size-4" /> },
-    { to: "/profil", label: "Profil", icon: <User className="size-4" /> },
+    { to: "/profil", label: "Profil", icon: <User className="size-4" />, mobile: true },
     { to: "/securite", label: "Sécurité", icon: <Shield className="size-4" /> },
   ];
+}
+
+/** Mobile bottom-nav center action: 🔎 Explorer for teens, ➕ Publier for adults. */
+function centerActionFor(type: AccountType | undefined): { to: string; label: string; icon: ReactNode } {
+  if (type === "teen") {
+    return { to: "/missions", label: "Explorer", icon: <Compass className="size-5" /> };
+  }
+  return { to: "/missions/create", label: "Publier", icon: <Plus className="size-5" /> };
 }
 
 const TYPE_LABEL: Record<AccountType, string> = {
@@ -93,7 +106,7 @@ function ThemeToggle() {
 
 function NotificationsMenu() {
   const notifications = useQuery(api.notifications.listMine) ?? [];
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = notifications.filter((n: any) => !n.read).length;
   const markAllRead = useMutation(api.notifications.markAllRead);
   const navigate = useNavigate();
 
@@ -124,7 +137,7 @@ function NotificationsMenu() {
               Aucune notification pour le moment 🕊️
             </p>
           ) : (
-            notifications.map((n) => (
+            notifications.map((n: any) => (
               <button
                 key={n._id}
                 className={cn(
@@ -152,6 +165,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const items = navFor(user?.accountType);
   const isTeen = user?.accountType === "teen";
+  const center = centerActionFor(user?.accountType);
 
   const handleSignOut = async () => {
     await signOut();
@@ -168,6 +182,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/accueil" className="flex items-center gap-2 font-display text-lg font-extrabold tracking-tight">
             <span className="grid size-7 place-items-center rounded-lg bg-primary text-sm text-primary-foreground">π</span>
             <span className="hidden sm:inline">À LA PIÈCE</span>
+            <Badge variant="secondary" className="hidden text-[10px] md:inline-flex">
+              {isTeen ? "⚡ Mode ado" : "💼 Mode adulte"}
+            </Badge>
           </Link>
           <div className="flex items-center gap-1.5">
             <ThemeToggle />
@@ -234,16 +251,50 @@ export function AppShell({ children }: { children: ReactNode }) {
               🛡️ Besoin d'aide pendant une mission ? Le bouton <strong>SOS</strong> est toujours sur la page mission.
             </div>
           )}
+          {!isTeen && (
+            <div className="mt-auto rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+              💡 Astuce : une <strong>Mission rapide ⚡</strong> est prise par le premier adolescent disponible.
+            </div>
+          )}
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0 flex-1 p-4 pb-24 sm:p-6 lg:pb-10">{children}</main>
+        <main className="min-w-0 flex-1 p-4 pb-28 sm:p-6 lg:pb-10">{children}</main>
       </div>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — center action differs by role */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-lg lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5">
-          {items.filter((i) => i.mobile).slice(0, 5).map((item) => (
+        <div className="mx-auto grid max-w-md grid-cols-5 items-end">
+          {items.filter((i) => i.mobile).slice(0, 2).map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )
+              }
+            >
+              {item.icon}
+              {item.label}
+            </NavLink>
+          ))}
+          <NavLink to={center.to} className="flex flex-col items-center">
+            <span
+              className={cn(
+                "-mt-5 grid size-12 place-items-center rounded-full shadow-lg transition-transform active:scale-95",
+                isTeen
+                  ? "bg-coin text-[#181a1d] shadow-coin/40" // gold coin + charcoal icon
+                  : "bg-primary text-primary-foreground shadow-primary/30",
+              )}
+              aria-label={center.label}
+            >
+              {center.icon}
+            </span>
+            <span className="pb-1 text-[10px] font-semibold">{center.label}</span>
+          </NavLink>
+          {items.filter((i) => i.mobile).slice(2, 4).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

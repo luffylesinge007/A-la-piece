@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AVATAR_CHOICES } from "@/pages/Onboarding";
 import { euros, formatDateShort, formatDateTime, friendlyError } from "@/lib/format";
-import { BadgeCheck, CalendarCheck, Check, FileText, Pencil, Star, Wallet } from "lucide-react";
+import { BadgeCheck, CalendarCheck, Check, FileText, Pencil, Star, Trophy, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -130,9 +130,32 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Teen: game stats */}
+        {/* Teen: game profile — XP, niveau, badges */}
         {isTeen && (
           <>
+            {stats && (
+              <Card className="card-shadow border-coin/50 bg-gradient-to-r from-coin/15 via-coin/5 to-transparent">
+                <CardContent className="p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Progression</p>
+                      <p className="font-display text-2xl font-extrabold">
+                        🏆 Niveau {stats.level.number} — {stats.level.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {stats.xp} XP{stats.level.next ? ` · encore ${stats.level.next.minXp - stats.xp} XP → ${stats.level.next.title}` : " · niveau maximum 🎉"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display text-xl font-extrabold">⚡ {stats.quickWins}</p>
+                      <p className="text-[11px] text-muted-foreground">missions rapides gagnées</p>
+                    </div>
+                  </div>
+                  <Progress value={stats.level.pct} className="mt-3 h-2" />
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { icon: <Wallet className="size-4" />, label: "Gagné", value: stats ? euros(stats.totalEarnedCents) : "—" },
@@ -149,9 +172,41 @@ export default function Profile() {
                 </Card>
               ))}
             </div>
-            <p className="text-center text-xs text-muted-foreground">
-              🏆 XP, niveaux, badges et classements arrivent dans la V2 — les bases sont déjà en place.
-            </p>
+
+            {/* Badges — earned + locked */}
+            {stats && (
+              <Card className="card-shadow border-border/60">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 font-display text-base">
+                    <Trophy className="size-4 text-amber-500" /> Badges ({stats.badges.length} débloqué{stats.badges.length > 1 ? "s" : ""})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {stats.badges.length === 0 ? (
+                    <p className="py-2 text-center text-sm text-muted-foreground">
+                      Aucun badge pour l'instant — termine ta première mission pour débloquer 🏅 Première mission !
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {stats.badges.map((b: any) => (
+                        <span
+                          key={b.id}
+                          title={b.description}
+                          className="flex items-center gap-1.5 rounded-full border border-coin/50 bg-coin/10 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-coin"
+                        >
+                          <span>{b.emoji}</span> {b.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {stats.badges.length > 0 && (
+                    <p className="mt-3 border-t pt-3 text-[11px] text-muted-foreground">
+                      🔒 Prochains badges : {stats.lockedBadges?.slice(0, 3).map((b: any) => `${b.emoji} ${b.label}`).join(" · ")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
 
