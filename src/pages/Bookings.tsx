@@ -1,6 +1,8 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +12,8 @@ import { BOOKING_STATUS_META, PAYMENT_STATUS_META, eurosFromNumber, formatDateSh
 import { Link } from "react-router";
 
 export default function Bookings() {
+  const { user } = useAuth();
+  const isTeen = user?.accountType === "teen";
   const bookings = useQuery(api.bookings.listMine);
   const loading = bookings === undefined;
 
@@ -65,26 +69,36 @@ export default function Bookings() {
             </TabsList>
             <TabsContent value="active" className="mt-4 space-y-3">
               {active.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-                    <span className="text-3xl">🗓️</span>
-                    <p className="font-semibold">Aucune réservation active</p>
-                    <p className="text-sm text-muted-foreground">
-                      Une réservation apparaît ici dès qu'une candidature est acceptée.
-                    </p>
-                  </CardContent>
-                </Card>
+                <EmptyState
+                  emoji="🗓️"
+                  title="Aucune réservation active"
+                  description={
+                    isTeen
+                      ? "Dès qu'un adulte accepte ta candidature (ou que tu prends une mission rapide), elle apparaîtra ici."
+                      : "Dès qu'un candidat est accepté sur une de tes missions, la réservation s'affichera ici avec son état de paiement."
+                  }
+                  actions={
+                    isTeen
+                      ? [{ label: "🔍 Explorer les missions", to: "/missions" }]
+                      : [{ label: "➕ Publier une mission", to: "/missions/create" }]
+                  }
+                />
               ) : (
                 active.map((b: any) => <CardRow key={b._id} b={b} />)
               )}
             </TabsContent>
             <TabsContent value="past" className="mt-4 space-y-3">
               {past.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                    Rien dans l'historique pour l'instant.
-                  </CardContent>
-                </Card>
+                <EmptyState
+                  emoji="📜"
+                  title="Rien dans l'historique"
+                  description={
+                    isTeen
+                      ? "Tes missions terminées et tes paiements validés seront archivés ici."
+                      : "Tes missions terminées et tes dépenses seront archivées ici."
+                  }
+                  variant="subtle"
+                />
               ) : (
                 past.map((b: any) => <CardRow key={b._id} b={b} />)
               )}

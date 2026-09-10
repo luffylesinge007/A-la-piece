@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -77,15 +78,20 @@ export default function Messages() {
           {!conversations ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
           ) : conversations.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
-                <span className="text-3xl">💬</span>
-                <p className="font-semibold">Aucune conversation</p>
-                <p className="text-sm text-muted-foreground">
-                  Le chat s'ouvre automatiquement quand une candidature est acceptée.
-                </p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              emoji="💬"
+              title="Tes conversations apparaîtront ici"
+              description={
+                user?.accountType === "teen"
+                  ? "Dès qu'une de tes candidatures est acceptée, tu pourras discuter avec la personne concernée."
+                  : "Dès qu'un candidat est accepté sur une de tes missions, vous pourrez échanger ici."
+              }
+              actions={
+                user?.accountType === "teen"
+                  ? [{ label: "🔍 Explorer les missions", to: "/missions" }]
+                  : [{ label: "➕ Publier une mission", to: "/missions/create" }]
+              }
+            />
           ) : (
             conversations.map((c: any) => (
               <button
