@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,8 @@ import { toast } from "sonner";
 
 export default function Wallet() {
   const { user } = useAuth();
+  const isTeen = user?.accountType === "teen";
+  const stats = useQuery(api.stats.teenStats);
   const wallet = useQuery(api.wallet.getWallet);
   const transactions = useQuery(api.wallet.myTransactions);
   const goals = useQuery(api.wallet.myGoals);
@@ -68,8 +71,6 @@ export default function Wallet() {
     }
   };
 
-  const isTeen = user?.accountType === "teen";
-
   return (
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-5">
@@ -112,7 +113,23 @@ export default function Wallet() {
               </Card>
             </>
           )}
-        </div>
+        </div>        {/* Gains this week/month (teens) */}
+        {isTeen && stats && (
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="card-shadow border-coin/40 bg-coin/5">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground">📅 Cette semaine</p>
+                <p className="mt-1 font-display text-xl font-extrabold text-amber-700 dark:text-coin">{euros(stats.weekCents)}</p>
+              </CardContent>
+            </Card>
+            <Card className="card-shadow border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground">🗓️ Ce mois-ci</p>
+                <p className="mt-1 font-display text-xl font-extrabold">{euros(stats.monthCents)}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Savings goals */}
         <Card className="card-shadow border-border/60">
@@ -126,12 +143,18 @@ export default function Wallet() {
             {!goals ? (
               <Skeleton className="h-16 rounded-xl" />
             ) : goals.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                Un nouveau téléphone ? Un vélo ? Crée un objectif et mets-y ton argent de mission de côté.
-              </p>
+              <EmptyState
+                emoji="🎯"
+                title="Aucun objectif pour l'instant"
+                description="Un nouveau téléphone ? Un vélo ? Crée un objectif et mets-y ton argent de mission de côté."
+                actions={[{ label: "Créer mon premier objectif", to: "/portefeuille" }]}
+                className="border-0 bg-transparent py-6"
+              />
             ) : (
               goals.map((g: any) => {
                 const pct = Math.min(100, Math.round((g.savedCents / g.targetCents) * 100));
+                const missing = Math.max(0, g.targetCents - g.savedCents);
+                const missionsNeeded = Math.ceil(missing / 1500); // ≈ 15 € per mission
                 return (
                   <div key={g._id} className="rounded-xl border p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -145,7 +168,7 @@ export default function Wallet() {
                         </div>
                       </div>
                       <div className="flex gap-1.5">
-        <Button size="sm" variant="outline" onClick={() => setAllocOpen(g)} disabled={(wallet?.availableCents ?? 0) === 0}>
+                        <Button size="sm" variant="outline" onClick={() => setAllocOpen(g)} disabled={(wallet?.availableCents ?? 0) === 0}>
                           Alimenter
                         </Button>
                         <Button size="icon" variant="ghost" aria-label="Supprimer l'objectif" onClick={() => deleteGoal({ goalId: g._id }).catch((e) => toast.error(friendlyError(e)))}>
@@ -154,6 +177,11 @@ export default function Wallet() {
                       </div>
                     </div>
                     <Progress value={pct} className="mt-3 h-2" />
+                    {missing > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        💡 Il te manque <strong>{euros(missing)}</strong> — à raison de ~15 € par mission : ≈ <strong>{missionsNeeded} mission{missionsNeeded > 1 ? "s" : ""}</strong> (estimation, non garantie).
+                      </p>
+                    )}
                   </div>
                 );
               })

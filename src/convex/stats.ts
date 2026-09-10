@@ -62,6 +62,7 @@ export const teenStats = query({
       xp: game.xp,
       level: game.level,
       badges: game.badges,
+      lockedBadges: game.lockedBadges,
       quickWins: game.stats.quickWins,
     };
   },
