@@ -17,6 +17,7 @@ import type * as gamification from "../gamification.js";
 import type * as http from "../http.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_safety from "../lib/safety.js";
+import type * as lib_testing from "../lib/testing.js";
 import type * as missions from "../missions.js";
 import type * as notifications from "../notifications.js";
 import type * as payments from "../payments.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/helpers": typeof lib_helpers;
   "lib/safety": typeof lib_safety;
+  "lib/testing": typeof lib_testing;
   missions: typeof missions;
   notifications: typeof notifications;
   payments: typeof payments;
