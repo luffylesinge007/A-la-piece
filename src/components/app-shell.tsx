@@ -7,13 +7,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  Bell, Compass, FileText, Home, LayoutGrid, LogOut, MessageSquare,
-  Moon, Plus, Shield, Sun, Wallet, User, CalendarCheck, Settings, Zap,
+  Bell, CalendarCheck, Compass, FileText, Home, LayoutGrid, LogOut,
+  MessageSquare, Moon, Plus, Shield, Sun, User, Wallet, Settings,
 } from "lucide-react";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { formatDateTime } from "@/lib/format";
+import logo from "@/assets/logo.svg";
 
 export type AccountType = "teen" | "adult" | "parent" | "organization" | "admin" | "moderator";
 
@@ -26,16 +27,17 @@ interface NavItem {
 
 /**
  * Role-distinct navigation.
- * ADO: discovery-first (Explorer + Candidatures prominent).
- * ADULTE: efficiency-first (Publier + Mes missions prominent).
+ * ADO: discovery-first (Explorer is the big center action).
+ * ADULTE: efficiency-first (Publier is the big center action).
+ * The 4 `mobile` items sit around the center button — never duplicating it.
  */
 function navFor(type: AccountType | undefined): NavItem[] {
   if (type === "teen") {
     return [
       { to: "/accueil", label: "Accueil", icon: <Home className="size-4" />, mobile: true },
-      { to: "/missions", label: "Explorer", icon: <Compass className="size-4" />, mobile: true },
+      { to: "/missions", label: "Explorer", icon: <Compass className="size-4" /> },
       { to: "/candidatures", label: "Candidatures", icon: <FileText className="size-4" />, mobile: true },
-      { to: "/reservations", label: "Réservations", icon: <CalendarCheck className="size-4" />, mobile: true },
+      { to: "/reservations", label: "Réservations", icon: <CalendarCheck className="size-4" /> },
       { to: "/messages", label: "Messages", icon: <MessageSquare className="size-4" />, mobile: true },
       { to: "/portefeuille", label: "Portefeuille", icon: <Wallet className="size-4" /> },
       { to: "/profil", label: "Profil", icon: <User className="size-4" />, mobile: true },
@@ -47,8 +49,8 @@ function navFor(type: AccountType | undefined): NavItem[] {
     { to: "/missions", label: "Explorer", icon: <Compass className="size-4" /> },
     { to: "/missions/create", label: "Publier", icon: <Plus className="size-4" /> },
     { to: "/mes-missions", label: "Mes missions", icon: <LayoutGrid className="size-4" />, mobile: true },
-    { to: "/candidatures", label: "Candidatures", icon: <FileText className="size-4" />, mobile: true },
-    { to: "/reservations", label: "Réservations", icon: <CalendarCheck className="size-4" />, mobile: true },
+    { to: "/candidatures", label: "Candidatures", icon: <FileText className="size-4" /> },
+    { to: "/reservations", label: "Réservations", icon: <CalendarCheck className="size-4" /> },
     { to: "/messages", label: "Messages", icon: <MessageSquare className="size-4" />, mobile: true },
     { to: "/portefeuille", label: "Portefeuille", icon: <Wallet className="size-4" /> },
     { to: "/profil", label: "Profil", icon: <User className="size-4" />, mobile: true },
@@ -73,7 +75,7 @@ const TYPE_LABEL: Record<AccountType, string> = {
   moderator: "Modérateur",
 };
 
-function ThemeToggle() {
+function useThemeState() {
   const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
     return (localStorage.getItem("alp-theme") as "light" | "dark" | "system") ?? "system";
   });
@@ -91,6 +93,12 @@ function ThemeToggle() {
     apply(theme);
   }, [theme]);
 
+  return { theme, setTheme };
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useThemeState();
+
   const cycle = () => {
     const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
     setTheme(next);
@@ -99,7 +107,7 @@ function ThemeToggle() {
 
   return (
     <Button variant="ghost" size="icon" onClick={cycle} aria-label="Changer de thème">
-      {theme === "light" ? <Sun className="size-4" /> : theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4 opacity-60" />}
+      {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
     </Button>
   );
 }
@@ -108,6 +116,7 @@ function NotificationsMenu() {
   const notifications = useQuery(api.notifications.listMine) ?? [];
   const unread = notifications.filter((n: any) => !n.read).length;
   const markAllRead = useMutation(api.notifications.markAllRead);
+  const markRead = useMutation(api.notifications.markRead);
   const navigate = useNavigate();
 
   return (
@@ -125,9 +134,9 @@ function NotificationsMenu() {
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <p className="text-sm font-semibold">Notifications</p>
-          {unread > 0 && (
+          {notifications.length > 0 && (
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAllRead()}>
-              Tout marquer lu
+              {unread > 0 ? "Tout marquer lu" : "Tout effacer"}
             </Button>
           )}
         </div>
@@ -145,6 +154,7 @@ function NotificationsMenu() {
                   !n.read && "bg-primary/5",
                 )}
                 onClick={() => {
+                  if (!n.read) markRead({ notificationId: n._id }).catch(() => {});
                   if (n.link) navigate(n.link);
                 }}
               >
@@ -174,13 +184,29 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const firstName = profile?.firstName ?? user?.name ?? "toi";
 
+  const navLinkClass = ({ isActive }: { isActive: boolean }, mobile = false) =>
+    cn(
+      mobile
+        ? "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors"
+        : "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+      mobile
+        ? isActive
+          ? "text-primary"
+          : "text-muted-foreground"
+        : isActive
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+    );
+
+  const mobileItems = items.filter((i) => i.mobile);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
           <Link to="/accueil" className="flex items-center gap-2 font-display text-lg font-extrabold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-lg bg-primary text-sm text-primary-foreground">π</span>
+            <img src={logo} alt="" className="size-7 rounded-lg" />
             <span className="hidden sm:inline">À LA PIÈCE</span>
             <Badge variant="secondary" className="hidden text-[10px] md:inline-flex">
               {isTeen ? "⚡ Mode ado" : "💼 Mode adulte"}
@@ -230,28 +256,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Desktop sidebar */}
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col gap-1 border-r p-3 lg:flex">
           {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                )
-              }
-            >
+            <NavLink key={item.to} to={item.to} className={(c) => navLinkClass(c)}>
               {item.icon}
               {item.label}
             </NavLink>
           ))}
-          {isTeen && (
+          {isTeen ? (
             <div className="mt-auto rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
               🛡️ Besoin d'aide pendant une mission ? Le bouton <strong>SOS</strong> est toujours sur la page mission.
             </div>
-          )}
-          {!isTeen && (
+          ) : (
             <div className="mt-auto rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
               💡 Astuce : une <strong>Mission rapide ⚡</strong> est prise par le premier adolescent disponible.
             </div>
@@ -262,20 +276,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-w-0 flex-1 p-4 pb-28 sm:p-6 lg:pb-10">{children}</main>
       </div>
 
-      {/* Mobile bottom nav — center action differs by role */}
+      {/* Mobile bottom nav — Accueil · [item] · CENTER · [item] · Profil */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-lg lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end">
-          {items.filter((i) => i.mobile).slice(0, 2).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )
-              }
-            >
+          {mobileItems.slice(0, 2).map((item) => (
+            <NavLink key={item.to} to={item.to} className={(c) => navLinkClass(c, true)}>
               {item.icon}
               {item.label}
             </NavLink>
@@ -294,17 +299,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span className="pb-1 text-[10px] font-semibold">{center.label}</span>
           </NavLink>
-          {items.filter((i) => i.mobile).slice(2, 4).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )
-              }
-            >
+          {mobileItems.slice(2, 4).map((item) => (
+            <NavLink key={item.to} to={item.to} className={(c) => navLinkClass(c, true)}>
               {item.icon}
               {item.label}
             </NavLink>

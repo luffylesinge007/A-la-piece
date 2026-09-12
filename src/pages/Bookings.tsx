@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BOOKING_STATUS_META, PAYMENT_STATUS_META, eurosFromNumber, formatDateShort } from "@/lib/format";
+import { getCategory } from "@/convex/lib/safety";
 import { Link } from "react-router";
 
 export default function Bookings() {
@@ -24,7 +25,7 @@ export default function Bookings() {
     <Card className="card-shadow border-border/60">
       <CardContent className="flex flex-wrap items-center gap-4 p-4">
         <span className="grid size-11 place-items-center rounded-xl bg-secondary text-xl">
-          {b.mission ? "📌" : "📌"}
+          {getCategory(b.mission?.categorySlug ?? "")?.emoji ?? "📌"}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

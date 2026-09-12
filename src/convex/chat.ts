@@ -27,7 +27,10 @@ export const listConversations = query({
         _id: conv._id,
         lastMessageAt: conv.lastMessageAt,
         lastMessagePreview: conv.lastMessagePreview ?? "Nouvelle conversation",
+        missionId: conv.missionId ?? null,
         missionTitle: mission?.title ?? null,
+        missionDate: mission?.scheduledDate ?? null,
+        missionTime: mission?.scheduledTime ?? null,
         counterpart: counterpart
           ? { firstName: counterpart.firstName, avatarEmoji: counterpart.avatarEmoji ?? "👤" }
           : { firstName: "Utilisateur", avatarEmoji: "👤" },

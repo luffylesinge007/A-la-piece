@@ -184,12 +184,11 @@ export default function Settings() {
               <strong>{user?.accountType}</strong>
             </p>
             <p className="text-muted-foreground">
-              📚 Centre d'aide, CGU et suppression de compte : pages en préparation pour la V2.
-              Pour toute question, écris à <strong>support@alapiece.app</strong>.
+              📚 Une question ? Écris à <strong>support@alapiece.app</strong> — nous répondons sous 24 h ouvrées.
             </p>
             <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-              ℹ️ Les paiements de cette démonstration nécessitent une clé Stripe configurée. Toutes
-              les données affichées restent stockées dans cet environnement de développement.
+              🛡️ Confidentialité : ton adresse exacte, ton téléphone et ta position ne sont jamais visibles publiquement.
+              Les paiements sont traités par Stripe ; aucune donnée bancaire n'est stockée sur la plateforme.
             </p>
           </CardContent>
         </Card>

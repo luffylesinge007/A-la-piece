@@ -235,6 +235,9 @@ function TeenHome() {
                 <p className="font-display font-bold">🎯 {firstGoal.label}</p>
                 <p className="text-xs text-muted-foreground">
                   {eurosFromNumber(firstGoal.savedCents / 100)} / {eurosFromNumber(firstGoal.targetCents / 100)}
+                  {firstGoal.savedCents < firstGoal.targetCents && (
+                    <> · encore <strong>{eurosFromNumber((firstGoal.targetCents - firstGoal.savedCents) / 100)}</strong> 🚀</>
+                  )}
                 </p>
               </div>
             </div>

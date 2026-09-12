@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { friendlyError, formatDateTime } from "@/lib/format";
-import { ArrowLeft, Ban, Flag, Send, Smile } from "lucide-react";
+import { eurosFromNumber, formatDateShort, friendlyError, formatDateTime } from "@/lib/format";
+import { ArrowLeft, Ban, CalendarDays, Flag, Send, Smile } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -69,6 +69,8 @@ export default function Messages() {
     }
   };
 
+  const activeConv = conversations?.find((c: any) => c._id === id);
+
   return (
     <AppShell>
       <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
@@ -83,7 +85,7 @@ export default function Messages() {
               title="Tes conversations apparaîtront ici"
               description={
                 user?.accountType === "teen"
-                  ? "Dès qu'une de tes candidatures est acceptée, tu pourras discuter avec la personne concernée."
+                  ? "Dès qu'une de tes candidatures est acceptée — ou que tu prends une mission rapide ⚡ — tu pourras discuter avec la personne concernée."
                   : "Dès qu'un candidat est accepté sur une de tes missions, vous pourrez échanger ici."
               }
               actions={
@@ -123,15 +125,30 @@ export default function Messages() {
         {id && (
           <Card className="card-shadow flex h-[calc(100vh-11rem)] flex-col border-border/60 lg:h-[calc(100vh-8.5rem)]">
             <div className="flex items-center justify-between border-b p-3">
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => navigate("/messages")}>
                   <ArrowLeft className="size-4" />
                 </Button>
-                <p className="font-display font-bold">
-                  {conversations?.find((c: any) => c._id === id)?.counterpart?.firstName ?? "Conversation"}
-                </p>
+                <div className="min-w-0">
+                  <p className="truncate font-display font-bold">
+                    {activeConv?.counterpart?.firstName ?? "Conversation"}
+                  </p>
+                  {activeConv?.missionTitle && (
+                    <p className="truncate text-xs text-muted-foreground">
+                      Mission : « {activeConv.missionTitle} »
+                      {activeConv.missionDate
+                        ? ` · ${formatDateShort(activeConv.missionDate)}${activeConv.missionTime ? ` à ${activeConv.missionTime}` : ""}`
+                        : ""}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-1">
+                {activeConv?.missionId && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/missions/${activeConv.missionId}`}>Voir la mission</Link>
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" onClick={() => setReportOpen(true)} aria-label="Signaler">
                   <Flag className="size-4" />
                 </Button>
