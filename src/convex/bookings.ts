@@ -11,11 +11,11 @@ import {
 function statusFlowMessage(status: string): string | null {
   switch (status) {
     case "confirmed":
-      return "Mission confirmée ✅";
+      return "Mission confirmée";
     case "in_progress":
-      return "La mission a commencé 🚀";
+      return "La mission a commencé";
     case "completed":
-      return "Mission terminée 🎉";
+      return "Mission terminée";
     default:
       return null;
   }
@@ -66,7 +66,7 @@ export const listMine = query({
             }
           : null,
         counterpart: counterpart
-          ? { firstName: counterpart.firstName, avatarEmoji: counterpart.avatarEmoji }
+          ? { firstName: counterpart.firstName, avatarIcon: counterpart.avatarIcon }
           : null,
       });
     }
@@ -124,7 +124,7 @@ export const getBooking = query({
       counterpart: counterpart
         ? {
             firstName: counterpart.firstName,
-            avatarEmoji: counterpart.avatarEmoji,
+            avatarIcon: counterpart.avatarIcon,
             city: counterpart.city,
             verifiedEmail: counterpart.verifiedEmail ?? false,
             verifiedPhone: counterpart.verifiedPhone ?? false,
@@ -200,12 +200,12 @@ export const checkIn = mutation({
     });
 
     const conversationId = await getOrCreateConversation(ctx, b.adultId, b.teenId, b.missionId, b._id);
-    await insertSystemMessage(ctx, conversationId, "La mission a commencé 🚀 Bon courage !");
+    await insertSystemMessage(ctx, conversationId, "La mission a commencé. Bon courage !");
     for (const uid of [b.adultId, b.teenId]) {
       await createNotification(ctx, {
         userId: uid,
         type: "mission",
-        title: "Mission en cours 🚀",
+        title: "Mission en cours",
         body: `« ${mission.title} » a commencé.`,
         link: `/reservations/${b._id}`,
       });
@@ -236,11 +236,11 @@ export const checkOut = mutation({
       createdAt: now,
     });
     const conversationId = await getOrCreateConversation(ctx, b.adultId, b.teenId, b.missionId, b._id);
-    await insertSystemMessage(ctx, conversationId, "L'adolescent a terminé la mission ✅");
+    await insertSystemMessage(ctx, conversationId, "L'adolescent a terminé la mission.");
     await createNotification(ctx, {
       userId: b.adultId,
       type: "mission",
-      title: "Mission terminée 🎉",
+      title: "Mission terminée",
       body: `« ${mission.title} » — confirme la mission pour libérer le paiement.`,
       link: `/reservations/${b._id}`,
     });
@@ -264,11 +264,11 @@ export const confirmCompletion = mutation({
     await ctx.db.patch(mission._id, { status: "completed" });
 
     const conversationId = await getOrCreateConversation(ctx, b.adultId, b.teenId, b.missionId, b._id);
-    await insertSystemMessage(ctx, conversationId, "Mission terminée 🎉 Merci à tous les deux !");
+    await insertSystemMessage(ctx, conversationId, "Mission terminée. Merci à tous les deux !");
     await createNotification(ctx, {
       userId: b.teenId,
       type: "mission",
-      title: "Mission terminée 🎉",
+      title: "Mission terminée",
       body: `« ${mission.title} » — l'adulte va confirmer pour débloquer ton paiement.`,
       link: `/reservations/${b._id}`,
     });

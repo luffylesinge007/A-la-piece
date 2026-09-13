@@ -10,13 +10,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { eurosFromNumber, formatDateShort, friendlyError, formatDateTime } from "@/lib/format";
-import { ArrowLeft, Ban, CalendarDays, Flag, Send, Smile } from "lucide-react";
+import { DataIcon, ProfileAvatar } from "@/components/icons";
+import { ArrowLeft, Ban, Cog, Flag, HandMetal, HelpCircle, MessagesSquare, PartyPopper, Search, Send, ShieldCheck, Smile, ThumbsUp, Timer, Sparkles, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { PawPrint, CheckCircle2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const QUICK_EMOJIS = ["👍", "🙏", "🎉", "😊", "🐶", "⏰", "✅", "❓"];
+/** Quick-reply pictograms (Lucide) — replaces emoji shortcuts. */
+const QUICK_REPLIES: { id: string; icon: LucideIcon; label: string }[] = [
+  { id: "Merci !", icon: ThumbsUp, label: "Merci" },
+  { id: "Je serai là à l'heure.", icon: Timer, label: "À l'heure" },
+  { id: "C'est noté !", icon: PartyPopper, label: "C'est noté" },
+  { id: "À tout à l'heure.", icon: Smile, label: "À tout de suite" },
+  { id: "Je m'occupe des animaux avec plaisir.", icon: PawPrint, label: "Animaux" },
+  { id: "Question : quel jour exactement ?", icon: HelpCircle, label: "Question" },
+  { id: "C'est confirmé.", icon: CheckCircle2, label: "Confirmé" },
+  { id: "Pouvez-vous préciser ?", icon: HandMetal, label: "Préciser" },
+];
 
 export default function Messages() {
   const { id } = useParams();
@@ -81,17 +93,17 @@ export default function Messages() {
             <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
           ) : conversations.length === 0 ? (
             <EmptyState
-              emoji="💬"
+              icon={<MessagesSquare className="size-7" />}
               title="Tes conversations apparaîtront ici"
               description={
                 user?.accountType === "teen"
-                  ? "Dès qu'une de tes candidatures est acceptée — ou que tu prends une mission rapide ⚡ — tu pourras discuter avec la personne concernée."
+                  ? "Dès qu'une de tes candidatures est acceptée — ou que tu prends une mission rapide — tu pourras discuter avec la personne concernée."
                   : "Dès qu'un candidat est accepté sur une de tes missions, vous pourrez échanger ici."
               }
               actions={
                 user?.accountType === "teen"
-                  ? [{ label: "🔍 Explorer les missions", to: "/missions" }]
-                  : [{ label: "➕ Publier une mission", to: "/missions/create" }]
+                  ? [{ label: "Explorer les missions", to: "/missions" }]
+                  : [{ label: "Publier une mission", to: "/missions/create" }]
               }
             />
           ) : (
@@ -104,8 +116,8 @@ export default function Messages() {
                   id === c._id && "border-primary bg-primary/5",
                 )}
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xl">
-                  {c.counterpart?.avatarEmoji ?? "👤"}
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-primary">
+                  <ProfileAvatar icon={c.counterpart?.avatarIcon} name={c.counterpart?.firstName} iconClassName="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
@@ -168,7 +180,7 @@ export default function Messages() {
                 <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-2/3 rounded-xl" />)}</div>
               ) : messages.length === 0 ? (
                 <p className="pt-10 text-center text-sm text-muted-foreground">
-                  Démarre la conversation 👋 — présente-toi brièvement.
+                  Démarre la conversation — présente-toi brièvement.
                 </p>
               ) : (
                 messages.map((m: any) => (
@@ -183,7 +195,11 @@ export default function Messages() {
                           : "bg-secondary text-secondary-foreground",
                     )}
                   >
-                    {m.type === "system" ? `⚙️ ${m.body}` : m.body}
+                    {m.type === "system" ? (
+                      <span className="inline-flex items-center gap-1.5"><Cog className="size-3" /> {m.body}</span>
+                    ) : (
+                      m.body
+                    )}
                     <span className={cn("mt-0.5 block text-[10px]", m.type === "system" ? "" : m.senderId === user?._id ? "text-primary-foreground/70" : "text-muted-foreground")}>
                       {formatDateTime(m.createdAt)}
                     </span>
@@ -194,15 +210,15 @@ export default function Messages() {
             </div>
 
             <div className="space-y-2 border-t p-3">
-              <div className="flex gap-1">
-                {QUICK_EMOJIS.map((e) => (
+              <div className="flex gap-1 overflow-x-auto">
+                {QUICK_REPLIES.map((q) => (
                   <button
-                    key={e}
-                    className="rounded-lg px-2 py-1 text-lg transition-transform hover:scale-110"
-                    onClick={() => setDraft((d) => d + e)}
-                    aria-label={`Ajouter ${e}`}
+                    key={q.id}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    onClick={() => setDraft(q.id)}
+                    aria-label={`Insérer : ${q.label}`}
                   >
-                    {e}
+                    <q.icon className="size-3" /> {q.label}
                   </button>
                 ))}
               </div>
@@ -223,8 +239,8 @@ export default function Messages() {
                   <Send className="size-4" />
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                🛡️ Le partage de téléphone, email ou adresse est bloqué automatiquement.
+              <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <ShieldCheck className="size-3 text-emerald-500" /> Le partage de téléphone, email ou adresse est bloqué automatiquement.
               </p>
             </div>
           </Card>

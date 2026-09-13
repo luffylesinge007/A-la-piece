@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, Loader2, Mail } from "lucide-react";
+import { ArrowRight, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -159,8 +159,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 </form>
               </>
             )}
-            <div className="rounded-b-lg border-t bg-muted px-6 py-3 text-center text-xs text-muted-foreground">
-              🛡️ Connexion sécurisée par code à usage unique — sans mot de passe
+            <div className="flex items-center justify-center gap-1.5 rounded-b-lg border-t bg-muted px-6 py-3 text-center text-xs text-muted-foreground">
+              <ShieldCheck className="size-3.5 text-emerald-500" /> Connexion sécurisée par code à usage unique — sans mot de passe
             </div>
           </Card>
         </div>

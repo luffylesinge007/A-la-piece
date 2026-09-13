@@ -38,18 +38,18 @@ export const ACCESS_META: Record<
   },
 };
 
-/** Category catalogue (risk-based, extensible via the admin/DB later). */
+/** Category catalogue (risk-based, extensible via the admin/DB later). `icon` is a pictogram name resolved client-side (src/components/icons.tsx). */
 export const CATEGORIES = [
-  { slug: "animaux", label: "Animaux", emoji: "🐶", teenFriendly: true, risk: "low", maxMinutesMinor: 120 },
-  { slug: "jardinage", label: "Jardinage", emoji: "🌳", teenFriendly: true, risk: "low", maxMinutesMinor: 180 },
-  { slug: "cours", label: "Soutien scolaire", emoji: "📚", teenFriendly: true, risk: "low", maxMinutesMinor: 120 },
-  { slug: "informatique", label: "Informatique", emoji: "💻", teenFriendly: true, risk: "low", maxMinutesMinor: 120 },
-  { slug: "courses", label: "Courses & commissions", emoji: "🛒", teenFriendly: true, risk: "low", maxMinutesMinor: 90 },
-  { slug: "menage", label: "Aide à la maison", emoji: "🧹", teenFriendly: true, risk: "low", maxMinutesMinor: 180 },
-  { slug: "evenements", label: "Événements", emoji: "🎉", teenFriendly: true, risk: "medium", maxMinutesMinor: 240 },
-  { slug: "babysitting", label: "Garde d'enfants", emoji: "🧸", teenFriendly: false, risk: "high", maxMinutesMinor: 0 },
-  { slug: "bricolage", label: "Bricolage", emoji: "🔨", teenFriendly: false, risk: "high", maxMinutesMinor: 0 },
-  { slug: "livraison", label: "Livraison véhiculée", emoji: "🚴", teenFriendly: false, risk: "high", maxMinutesMinor: 0 },
+  { slug: "animaux", label: "Animaux", icon: "paw-print", teenFriendly: true, risk: "low", maxMinutesMinor: 120 },
+  { slug: "jardinage", label: "Jardinage", icon: "sprout", teenFriendly: true, risk: "low", maxMinutesMinor: 180 },
+  { slug: "cours", label: "Soutien scolaire", icon: "book-open", teenFriendly: true, risk: "low", maxMinutesMinor: 120 },
+  { slug: "informatique", label: "Informatique", icon: "laptop", teenFriendly: true, risk: "low", maxMinutesMinor: 120 },
+  { slug: "courses", label: "Courses & commissions", icon: "shopping-basket", teenFriendly: true, risk: "low", maxMinutesMinor: 90 },
+  { slug: "menage", label: "Aide à la maison", icon: "leaf", teenFriendly: true, risk: "low", maxMinutesMinor: 180 },
+  { slug: "evenements", label: "Événements", icon: "party-popper", teenFriendly: true, risk: "medium", maxMinutesMinor: 240 },
+  { slug: "babysitting", label: "Garde d'enfants", icon: "baby", teenFriendly: false, risk: "high", maxMinutesMinor: 0 },
+  { slug: "bricolage", label: "Bricolage", icon: "hammer", teenFriendly: false, risk: "high", maxMinutesMinor: 0 },
+  { slug: "livraison", label: "Livraison véhiculée", icon: "bike", teenFriendly: false, risk: "high", maxMinutesMinor: 0 },
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];

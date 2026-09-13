@@ -6,9 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ACCESS_META } from "@/convex/lib/safety";
+import { CategoryIcon } from "@/components/icons";
 import { eurosFromNumber, formatDateShort, formatDuration, friendlyError } from "@/lib/format";
 import { useMutation } from "convex/react";
-import { Clock, MapPin, Users, Zap } from "lucide-react";
+import { CalendarDays, Clock, MapPin, ShieldCheck, Users, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -18,7 +19,7 @@ interface MissionData {
   _id: Id<"missions">;
   title: string;
   categorySlug: string;
-  category?: { emoji: string; label: string } | null;
+  category?: { icon: string; label: string } | null;
   priceEuros: number;
   durationMin: number;
   scheduledDate: string;
@@ -46,7 +47,7 @@ export function AccessBadge({ level }: { level: keyof typeof ACCESS_META }) {
   );
 }
 
-/** ⚡ / 🛡️ mission-type chip. */
+/** Zap (rapide) / Shield (vérifiée) mission-type chip. */
 export function MissionTypeBadge({ type, className }: { type?: "quick" | "verified"; className?: string }) {
   if (type === "quick") {
     return (
@@ -57,13 +58,13 @@ export function MissionTypeBadge({ type, className }: { type?: "quick" | "verifi
   }
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand dark:text-coin", className)}>
-      🛡️ Mission vérifiée
+      <ShieldCheck className="size-3" /> Mission vérifiée
     </span>
   );
 }
 
 export function MissionCard({ mission, mine }: { mission: MissionData; mine?: boolean }) {
-  const { user, hasApprovedParent } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -81,7 +82,7 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
     setSending(true);
     try {
       await apply({ missionId: mission._id, message: message.trim() || undefined });
-      toast.success("Candidature envoyée 🎉 On te prévient dès la réponse !");
+      toast.success("Candidature envoyée — on te prévient dès la réponse !");
       setOpen(false);
       setMessage("");
       navigate("/candidatures");
@@ -96,7 +97,7 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
     setClaiming(true);
     try {
       await claim({ missionId: mission._id });
-      toast.success("⚡ Mission prise ! Elle est à toi.");
+      toast.success("Mission prise ! Elle est à toi.");
       navigate("/reservations");
     } catch (error) {
       toast.error(friendlyError(error));
@@ -110,8 +111,8 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
       <CardContent className="flex h-full flex-col p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-xl bg-secondary text-xl">
-              {cat?.emoji ?? "📌"}
+            <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary">
+              <CategoryIcon category={cat} className="size-5" />
             </span>
             <div>
               <h3 className="font-display leading-tight font-bold">{mission.title}</h3>
@@ -125,7 +126,7 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
 
         <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Clock className="size-3.5" /> {formatDuration(mission.durationMin)}</span>
-          <span className="flex items-center gap-1">📅 {formatDateShort(mission.scheduledDate)} · {mission.scheduledTime}</span>
+          <span className="flex items-center gap-1"><CalendarDays className="size-3.5" /> {formatDateShort(mission.scheduledDate)} · {mission.scheduledTime}</span>
           <span className="flex items-center gap-1"><MapPin className="size-3.5" /> {mission.area}, {mission.city}</span>
           {mission.applicantCount !== undefined && mission.applicantCount > 0 && (
             <span className="flex items-center gap-1"><Users className="size-3.5" /> {mission.applicantCount}{mission.maxApplicants ? `/${mission.maxApplicants}` : ""}</span>
@@ -137,8 +138,8 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
           <AccessBadge level={mission.access.level} />
           {mine && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">Ta mission</span>}
           {mine && isQuick && mission.status === "assigned" && (
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              ⚡ Mission prise !
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <Zap className="size-3" /> Mission prise !
             </span>
           )}
         </div>
@@ -149,7 +150,7 @@ export function MissionCard({ mission, mine }: { mission: MissionData; mine?: bo
           </Button>
           {!mine && isTeen && isQuick && mission.claimable && (
             <Button size="sm" className="flex-1" onClick={handleClaim} disabled={claiming}>
-              {claiming ? "…" : "⚡ Je prends"}
+              <Zap className="size-4" /> {claiming ? "…" : "Je prends"}
             </Button>
           )}
           {!mine && isTeen && isQuick && !mission.claimable && mission.status === "assigned" && (

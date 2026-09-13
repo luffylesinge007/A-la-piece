@@ -22,9 +22,9 @@ export const seedDemoMissions = mutation({
     if (existing) return { seeded: false };
 
     const demoAdults = [
-      { first: "Marie", city: "Bordeaux", emoji: "👩‍🦰", bio: "J'ai deux chats et un jardin — toujours contente d'avoir un coup de main !" },
-      { first: "Thomas", city: "Bordeaux", emoji: "🧔", bio: "Télétravail, PC capricieux et box qui déconnecte : j'ai besoin d'aide régulièrement." },
-      { first: "Sophie", city: "Mérignac", emoji: "👩", bio: "Coiffeuse, je manque de temps pour les petites courses de la semaine." },
+      { first: "Marie", city: "Bordeaux", icon: "heart-handshake", bio: "J'ai deux chats et un jardin — toujours contente d'avoir un coup de main !" },
+      { first: "Thomas", city: "Bordeaux", icon: "laptop", bio: "Télétravail, PC capricieux et box qui déconnecte : j'ai besoin d'aide régulièrement." },
+      { first: "Sophie", city: "Mérignac", icon: "users", bio: "Coiffeuse, je manque de temps pour les petites courses de la semaine." },
     ];
 
     const adultIds = [];
@@ -40,7 +40,7 @@ export const seedDemoMissions = mutation({
         firstName: adult.first,
         city: adult.city,
         bio: adult.bio,
-        avatarEmoji: adult.emoji,
+        avatarIcon: adult.icon,
         verifiedEmail: true,
         status: "active",
       });

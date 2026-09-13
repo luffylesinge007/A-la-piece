@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { AVATAR_CHOICES, DataIcon, ICONS } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
-import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { GraduationCap, Loader2, ArrowRight, ArrowLeft, Building2, HeartHandshake, ShieldCheck, UserRound, Lock, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -14,16 +15,14 @@ import { friendlyError } from "@/lib/format";
 
 type Role = "teen" | "adult" | "parent" | "organization";
 
-export const AVATAR_CHOICES = ["🧑‍🎓", "👩‍🎓", "👦", "👧", "🧑", "👩", "👨", "🦸", "🐱", "🦊", "🐼", "🦉"];
-
-const ROLE_CARDS: { id: Role; emoji: string; title: string; desc: string }[] = [
-  { id: "teen", emoji: "🧑‍🎓", title: "Je suis adolescent", desc: "Trouve des missions adaptées à ton âge et gagne de l'argent en rendant service." },
-  { id: "adult", emoji: "👨", title: "Je suis adulte", desc: "Publie des missions, choisis ton aide et paye en toute sécurité." },
-  { id: "parent", emoji: "👨‍👩‍👧", title: "Je suis parent / responsable", desc: "Accompagne un adolescent : autorisations, suivi et alertes." },
-  { id: "organization", emoji: "🏢", title: "Je représente une organisation", desc: "Associations, commerces et entreprises publient leurs missions." },
+const ROLE_CARDS: { id: Role; icon: LucideIcon; title: string; desc: string }[] = [
+  { id: "teen", icon: GraduationCap, title: "Je suis adolescent", desc: "Trouve des missions adaptées à ton âge et gagne de l'argent en rendant service." },
+  { id: "adult", icon: UserRound, title: "Je suis adulte", desc: "Publie des missions, choisis ton aide et paye en toute sécurité." },
+  { id: "parent", icon: HeartHandshake, title: "Je suis parent / responsable", desc: "Accompagne un adolescent : autorisations, suivi et alertes." },
+  { id: "organization", icon: Building2, title: "Je représente une organisation", desc: "Associations, commerces et entreprises publient leurs missions." },
 ];
 
-const INTERESTS = ["🐶 Animaux", "💻 Informatique", "🌳 Jardinage", "📚 Cours", "📸 Photo", "🎮 Jeux vidéo", "⚽ Sport", "🎨 Créatif"];
+const INTERESTS = ["Animaux", "Informatique", "Jardinage", "Cours", "Photo", "Jeux vidéo", "Sport", "Créatif"];
 const SKILLS = ["Patience", "Organisation", "Soin du détail", "Ponctualité", "Force physique", "Pédagogie", "Animaux", "Cuisine"];
 const AVAILABILITIES = ["Lun aprem", "Mar aprem", "Mer journée", "Jeu aprem", "Ven aprem", "Sam journée", "Dim journée"];
 
@@ -41,7 +40,7 @@ export default function Onboarding() {
   const [birthDate, setBirthDate] = useState("");
   const [city, setCity] = useState("");
   const [bio, setBio] = useState("");
-  const [avatar, setAvatar] = useState("🧑‍🎓");
+  const [avatar, setAvatar] = useState("graduation-cap");
   const [interests, setInterests] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [availability, setAvailability] = useState<string[]>([]);
@@ -59,7 +58,7 @@ export default function Onboarding() {
     if (preselected) {
       setRole(preselected);
       setStep("form");
-      setAvatar(preselected === "teen" ? "🧑‍🎓" : "👤");
+      setAvatar(preselected === "teen" ? "graduation-cap" : "user");
     }
   }, [preselected]);
 
@@ -107,7 +106,7 @@ export default function Onboarding() {
         lastName: role !== "teen" && lastName.trim() ? lastName.trim() : undefined,
         city: city.trim() || undefined,
         birthDate: role === "teen" ? birthDate : undefined,
-        avatarEmoji: avatar,
+        avatarIcon: avatar,
         bio: bio.trim() || undefined,
         interests: interests.length ? interests : undefined,
         skills: skills.length ? skills : undefined,
@@ -116,7 +115,7 @@ export default function Onboarding() {
       if (role === "teen") {
         setStep("parent-link");
       } else {
-        toast.success("Bienvenue sur À LA PIÈCE 🎉");
+        toast.success("Bienvenue sur À LA PIÈCE");
         navigate(role === "parent" ? "/securite" : "/accueil");
       }
     } catch (error) {
@@ -134,7 +133,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await linkParent({ parentEmail: parentEmail.trim() });
-      toast.success("Demande envoyée à ton responsable ✅");
+      toast.success("Demande envoyée à ton responsable");
       navigate("/accueil");
     } catch (error) {
       // The account is created; the link can be added later from Sécurité.
@@ -175,10 +174,12 @@ export default function Onboarding() {
               {ROLE_CARDS.map((r) => (
                 <button
                   key={r.id}
-                  onClick={() => { setRole(r.id); setStep("form"); if (r.id !== "teen") setAvatar("👤"); }}
+                  onClick={() => { setRole(r.id); setStep("form"); if (r.id !== "teen") setAvatar("user"); }}
                   className="flex w-full items-center gap-4 rounded-2xl border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-md card-shadow"
                 >
-                  <span className="text-3xl">{r.emoji}</span>
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <r.icon className="size-5" />
+                  </span>
                   <span className="flex-1">
                     <span className="block font-display font-bold">{r.title}</span>
                     <span className="mt-0.5 block text-sm text-muted-foreground">{r.desc}</span>
@@ -195,13 +196,13 @@ export default function Onboarding() {
             <CardContent className="space-y-5 p-6">
               <div>
                 <h1 className="font-display text-2xl font-extrabold">
-                  {role === "teen" && "Crée ton profil ado 🧑‍🎓"}
-                  {role === "adult" && "Crée ton profil adulte 👨"}
-                  {role === "parent" && "Votre profil de responsable 👨‍👩‍👧"}
-                  {role === "organization" && "Votre organisation 🏢"}
+                  {role === "teen" && "Crée ton profil ado"}
+                  {role === "adult" && "Crée ton profil adulte"}
+                  {role === "parent" && "Votre profil de responsable"}
+                  {role === "organization" && "Votre organisation"}
                 </h1>
-                <button className="mt-1 text-sm text-primary hover:underline" onClick={() => setStep("role")}>
-                  ← Changer de rôle
+                <button className="mt-1 flex items-center gap-1 text-sm text-primary hover:underline" onClick={() => setStep("role")}>
+                  <ArrowLeft className="size-3.5" /> Changer de rôle
                 </button>
               </div>
 
@@ -220,8 +221,8 @@ export default function Onboarding() {
                 <div className="space-y-1.5">
                   <Label htmlFor="birthDate">Date de naissance *</Label>
                   <Input id="birthDate" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
-                  <p className="text-xs text-muted-foreground">
-                    🔒 Jamais visible publiquement. Sert uniquement à évaluer les missions autorisées.
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Lock className="size-3" /> Jamais visible publiquement. Sert uniquement à évaluer les missions autorisées.
                   </p>
                 </div>
               )}
@@ -234,18 +235,22 @@ export default function Onboarding() {
               <div className="space-y-1.5">
                 <Label>Avatar</Label>
                 <div className="flex flex-wrap gap-2">
-                  {AVATAR_CHOICES.map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() => setAvatar(a)}
-                      className={`grid size-11 place-items-center rounded-xl border text-xl transition-all ${
-                        avatar === a ? "border-primary bg-primary/10 scale-105" : "border-border hover:border-primary/40"
-                      }`}
-                    >
-                      {a}
-                    </button>
-                  ))}
+                  {AVATAR_CHOICES.map((a) => {
+                    const Icon = ICONS[a];
+                    return (
+                      <button
+                        key={a}
+                        type="button"
+                        onClick={() => setAvatar(a)}
+                        aria-label={a}
+                        className={`grid size-11 place-items-center rounded-xl border transition-all ${
+                          avatar === a ? "scale-105 border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        <Icon className="size-5" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -298,15 +303,17 @@ export default function Onboarding() {
 
         {step === "parent-link" && (
           <Card className="card-shadow-lg animate-slide-up border-border/60">
-            <CardContent className="space-y-5 p-6 text-center">
-              <span className="text-5xl">👨‍👩‍👧</span>
-              <div>
-                <h1 className="font-display text-2xl font-extrabold">Un adulte de confiance</h1>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Ajoute un parent ou responsable : il pourra autoriser certaines missions 🟡
-                  et recevoir des alertes importantes. Tu pourras aussi le faire plus tard.
-                </p>
-              </div>
+          <CardContent className="space-y-5 p-6 text-center">
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+              <HeartHandshake className="size-7" />
+            </span>
+            <div>
+              <h1 className="font-display text-2xl font-extrabold">Un adulte de confiance</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Ajoute un parent ou responsable : il pourra autoriser certaines missions
+                soumise à autorisation et recevoir des alertes importantes. Tu pourras aussi le faire plus tard.
+              </p>
+            </div>
               <div className="space-y-1.5 text-left">
                 <Label htmlFor="parentEmail">Email du responsable (optionnel)</Label>
                 <Input

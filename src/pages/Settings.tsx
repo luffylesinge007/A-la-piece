@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { friendlyError } from "@/lib/format";
-import { Link2, Moon, Sun } from "lucide-react";
+import { BookOpen, Link2, Lock, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -44,7 +44,7 @@ export default function Settings() {
   const handle = async (patch: Record<string, unknown>) => {
     try {
       await updateSettings(patch as any);
-      toast.success("Préférence enregistrée ✅");
+      toast.success("Préférence enregistrée");
     } catch (error) {
       toast.error(friendlyError(error));
     }
@@ -74,7 +74,7 @@ export default function Settings() {
         {/* Privacy */}
         <Card className="card-shadow border-border/60">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-base">🔒 Confidentialité</CardTitle>
+            <CardTitle className="flex items-center gap-2 font-display text-base"><Lock className="size-4" /> Confidentialité</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3">
@@ -108,9 +108,12 @@ export default function Settings() {
               {toggle("showOnLeaderboard", settings?.showOnLeaderboard ?? false, false, "")}
             </div>
             {isMinor && (
-              <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                🛡️ Certaines protections sont verrouillées pour les mineurs : profil privé, position masquée,
-                messages restreints. C'est le choix de sécurité d'À LA PIÈCE.
+              <p className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Certaines protections sont verrouillées pour les mineurs : profil privé, position masquée,
+                  messages restreints. C'est le choix de sécurité d'À LA PIÈCE.
+                </span>
               </p>
             )}
           </CardContent>
@@ -183,12 +186,15 @@ export default function Settings() {
               Compte : <strong>{user?.email ?? "connecté"}</strong> · rôle{" "}
               <strong>{user?.accountType}</strong>
             </p>
-            <p className="text-muted-foreground">
-              📚 Une question ? Écris à <strong>support@alapiece.app</strong> — nous répondons sous 24 h ouvrées.
+            <p className="flex items-center gap-2 text-muted-foreground">
+              <BookOpen className="size-4 shrink-0" /> Une question ? Écris à <strong>support@alapiece.app</strong> — nous répondons sous 24 h ouvrées.
             </p>
-            <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-              🛡️ Confidentialité : ton adresse exacte, ton téléphone et ta position ne sont jamais visibles publiquement.
-              Les paiements sont traités par Stripe ; aucune donnée bancaire n'est stockée sur la plateforme.
+            <p className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-500" />
+              <span>
+                Confidentialité : ton adresse exacte, ton téléphone et ta position ne sont jamais visibles publiquement.
+                Les paiements sont traités par Stripe ; aucune donnée bancaire n'est stockée sur la plateforme.
+              </span>
             </p>
           </CardContent>
         </Card>

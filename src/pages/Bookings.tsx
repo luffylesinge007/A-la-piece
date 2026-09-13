@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BOOKING_STATUS_META, PAYMENT_STATUS_META, eurosFromNumber, formatDateShort } from "@/lib/format";
-import { getCategory } from "@/convex/lib/safety";
+import { CategorySlugIcon } from "@/components/icons";
+import { CalendarRange, FilePlus2, Search, ScrollText } from "lucide-react";
 import { Link } from "react-router";
 
 export default function Bookings() {
@@ -24,8 +25,8 @@ export default function Bookings() {
   const CardRow = ({ b }: { b: any }) => (
     <Card className="card-shadow border-border/60">
       <CardContent className="flex flex-wrap items-center gap-4 p-4">
-        <span className="grid size-11 place-items-center rounded-xl bg-secondary text-xl">
-          {getCategory(b.mission?.categorySlug ?? "")?.emoji ?? "📌"}
+        <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary">
+          <CategorySlugIcon slug={b.mission?.categorySlug} className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -71,7 +72,7 @@ export default function Bookings() {
             <TabsContent value="active" className="mt-4 space-y-3">
               {active.length === 0 ? (
                 <EmptyState
-                  emoji="🗓️"
+                  icon={<CalendarRange className="size-7" />}
                   title="Aucune réservation active"
                   description={
                     isTeen
@@ -80,8 +81,8 @@ export default function Bookings() {
                   }
                   actions={
                     isTeen
-                      ? [{ label: "🔍 Explorer les missions", to: "/missions" }]
-                      : [{ label: "➕ Publier une mission", to: "/missions/create" }]
+                      ? [{ label: "Explorer les missions", to: "/missions" }]
+                      : [{ label: "Publier une mission", to: "/missions/create" }]
                   }
                 />
               ) : (
@@ -91,7 +92,7 @@ export default function Bookings() {
             <TabsContent value="past" className="mt-4 space-y-3">
               {past.length === 0 ? (
                 <EmptyState
-                  emoji="📜"
+                  icon={<ScrollText className="size-6" />}
                   title="Rien dans l'historique"
                   description={
                     isTeen

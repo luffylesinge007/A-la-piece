@@ -78,7 +78,7 @@ export const submitReview = mutation({
     await createNotification(ctx, {
       userId: targetUserId,
       type: "system",
-      title: "⭐ Nouvel avis reçu",
+      title: "Nouvel avis reçu",
       body: `« ${mission?.title ?? "Mission"} » — note ${args.rating}/5.`,
       link: "/profil",
     });
@@ -122,7 +122,7 @@ export const myReviews = query({
         comment: r.comment,
         createdAt: r.createdAt,
         authorName: author?.firstName ?? "Utilisateur",
-        authorEmoji: author?.avatarEmoji ?? "👤",
+        authorIcon: author?.avatarIcon ?? null,
         missionTitle: mission?.title ?? "",
       });
     }

@@ -11,15 +11,16 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ACCESS_META, getCategory } from "@/convex/lib/safety";
+import { CategoryIcon, DataIcon, ProfileAvatar } from "@/components/icons";
 import { eurosFromNumber, formatDate, formatDuration, friendlyError } from "@/lib/format";
 import {
-  ArrowLeft, BadgeCheck, Ban, Clock, Lock, MapPin, Send, ShieldCheck, TriangleAlert, Users, Zap,
+  ArrowLeft, BadgeCheck, Ban, CalendarDays, CircleCheck, Clock, Hourglass, Lightbulb, Lock, MapPin, SearchX, Send, ShieldCheck, TriangleAlert, Users, Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
-const FALLBACK_CATEGORY = { emoji: "📌", label: "Mission" };
+const FALLBACK_CATEGORY = { icon: "pin", label: "Mission" };
 
 export default function MissionDetail() {
   const { id } = useParams();
@@ -52,10 +53,9 @@ export default function MissionDetail() {
   if (mission === null) {
     return (
       <AppShell>
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-            <span className="text-4xl">🫥</span>
-            <p className="font-display text-lg font-bold">Mission introuvable</p>
+        <Card className="border-dashed">            <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+              <span className="grid size-14 place-items-center rounded-2xl bg-secondary text-muted-foreground"><SearchX className="size-6" /></span>
+              <p className="font-display text-lg font-bold">Mission introuvable</p>
             <p className="text-sm text-muted-foreground">Elle a peut-être été retirée ou terminée.</p>
             <Button asChild><Link to="/missions">Retour aux missions</Link></Button>
           </CardContent>
@@ -73,7 +73,7 @@ export default function MissionDetail() {
     setApplying(true);
     try {
       await apply({ missionId: mission._id, message: message.trim() || undefined });
-      toast.success("Candidature envoyée 🎉");
+      toast.success("Candidature envoyée");
       setSheetOpen(false);
       setMessage("");
     } catch (error) {
@@ -87,7 +87,7 @@ export default function MissionDetail() {
     setClaiming(true);
     try {
       await claim({ missionId: mission._id });
-      toast.success("⚡ Mission prise ! Elle est à toi.");
+      toast.success("Mission prise ! Elle est à toi.");
       navigate("/reservations");
     } catch (error) {
       toast.error(friendlyError(error));
@@ -120,7 +120,9 @@ export default function MissionDetail() {
         <Card className="card-shadow-lg border-border/60">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
-              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-secondary text-3xl">{cat.emoji}</span>
+              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-secondary text-primary">
+                <CategoryIcon category={cat} className="size-7" />
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{cat.label}</Badge>
@@ -140,8 +142,8 @@ export default function MissionDetail() {
             <div className="grid gap-4 text-sm sm:grid-cols-2">
               {[
                 { icon: <Clock className="size-4" />, label: "Durée", value: formatDuration(mission.durationMin) },
-                { icon: <span>📅</span>, label: "Date", value: formatDate(mission.scheduledDate) },
-                { icon: <span>🕙</span>, label: "Heure", value: mission.scheduledTime },
+                { icon: <CalendarDays className="size-4" />, label: "Date", value: formatDate(mission.scheduledDate) },
+                { icon: <Clock className="size-4" />, label: "Heure", value: mission.scheduledTime },
                 { icon: <MapPin className="size-4" />, label: "Zone", value: `${mission.area}, ${mission.city}` },
                 ...(mission.teamSize ? [{ icon: <Users className="size-4" />, label: "Équipe", value: `${mission.teamSize} personnes` }] : []),
                 ...(mission.requiresPin ? [{ icon: <Lock className="size-4" />, label: "Code PIN", value: "Requis au démarrage" }] : []),
@@ -210,8 +212,9 @@ export default function MissionDetail() {
             </ul>
             {mission.access.level === "parental_approval" && !hasApprovedParent && isTeen && (
               <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
-                💡 Ajoute un responsable légal depuis la page <Link to="/securite" className="font-semibold underline">Sécurité</Link>{" "}
-                pour débloquer les missions 🟡.
+                <Lightbulb className="mr-1 inline size-3.5 text-amber-500" />
+                Ajoute un responsable légal depuis la page <Link to="/securite" className="font-semibold underline">Sécurité</Link>{" "}
+                pour débloquer les missions soumises à autorisation.
               </p>
             )}
           </CardContent>
@@ -246,8 +249,8 @@ export default function MissionDetail() {
         {mission.publisher && (
           <Card className="card-shadow border-border/60">
             <CardContent className="flex items-center gap-4 p-5">
-              <span className="grid size-12 place-items-center rounded-full bg-secondary text-2xl">
-                {mission.publisher.avatarEmoji ?? "👤"}
+              <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary">
+                <ProfileAvatar icon={mission.publisher.avatarIcon} name={mission.publisher.firstName} iconClassName="size-6" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-display font-bold">{mission.publisher.firstName}</p>
@@ -280,20 +283,24 @@ export default function MissionDetail() {
           alreadyApplied ? (
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="flex items-center justify-between gap-3 p-4">
-                <p className="text-sm"><strong>Candidature envoyée</strong> — statut : {mission.myApplicationStatus === "accepted" ? "acceptée ✅" : "en attente ⏳"}</p>
+                <p className="flex items-center gap-1.5 text-sm">
+                  <strong>Candidature envoyée</strong> — statut : {mission.myApplicationStatus === "accepted"
+                    ? <span className="flex items-center gap-1">acceptée <CircleCheck className="size-4 text-emerald-500" /></span>
+                    : <span className="flex items-center gap-1">en attente <Hourglass className="size-4 text-amber-500" /></span>}
+                </p>
                 <Button variant="outline" size="sm" asChild><Link to="/candidatures">Suivre</Link></Button>
               </CardContent>
             </Card>
           ) : (mission as any).missionType === "quick" && (mission as any).claimable ? (
             <Button size="lg" className="h-14 w-full animate-pulse text-base" onClick={handleClaim} disabled={claiming}>
-              <Zap className="size-5" /> {claiming ? "Prise en cours…" : "⚡ JE PRENDS LA MISSION"}
+              <Zap className="size-5" /> {claiming ? "Prise en cours…" : "JE PRENDS LA MISSION"}
             </Button>
           ) : (mission as any).missionType === "quick" && mission.status !== "published" ? (
             <Card className="border-emerald-500/30 bg-emerald-500/5">
               <CardContent className="flex items-center gap-3 p-4">
                 <Zap className="size-5 shrink-0 text-emerald-500" />
                 <p className="text-sm">
-                  <strong>⚡ Mission prise !</strong> Cette mission a été attribuée à un adolescent. Les autres ne peuvent plus la prendre.
+                  <strong>Mission prise !</strong> Cette mission a été attribuée à un adolescent. Les autres ne peuvent plus la prendre.
                 </p>
               </CardContent>
             </Card>

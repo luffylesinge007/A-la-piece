@@ -84,19 +84,19 @@ export const markHeld = mutation({
       await insertSystemMessage(
         ctx,
         conversationId,
-        "Mission confirmée ✅ — le paiement est sécurisé et sera versé après la mission.",
+        "Mission confirmée — le paiement est sécurisé et sera versé après la mission.",
       );
       await createNotification(ctx, {
         userId: booking.teenId,
         type: "payment",
-        title: "Mission confirmée ✅",
+        title: "Mission confirmée",
         body: `« ${title} » — le paiement est sécurisé. Prépare-toi !`,
         link: `/reservations/${booking._id}`,
       });
       await createNotification(ctx, {
         userId: booking.adultId,
         type: "payment",
-        title: "Paiement confirmé ✅",
+        title: "Paiement confirmé",
         body: `« ${title} » est réservée. Retrouvez les détails dans vos réservations.`,
         link: `/reservations/${booking._id}`,
       });
@@ -258,7 +258,7 @@ export const releasePayment = mutation({
       await createNotification(ctx, {
         userId: booking.teenId,
         type: "payment",
-        title: "💰 Paiement reçu !",
+        title: "Paiement reçu !",
         body: `${teenShare / 100} € sont disponibles dans ton portefeuille.`,
         link: "/portefeuille",
       });

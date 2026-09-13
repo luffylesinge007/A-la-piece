@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { friendlyError, formatDateTime } from "@/lib/format";
-import { Check, HeartHandshake, Link2, PhoneCall, ShieldCheck, X } from "lucide-react";
+import { DataIcon } from "@/components/icons";
+import { BadgeCheck, Check, CircleCheck, CircleAlert, HeartHandshake, Link2, PhoneCall, Play, ShieldCheck, Siren, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -40,7 +41,7 @@ export default function Safety() {
     setLinking(true);
     try {
       await linkParent({ parentEmail: parentEmail.trim() });
-      toast.success("Demande envoyée à ton responsable ✅");
+      toast.success("Demande envoyée à ton responsable");
       setParentEmail("");
     } catch (error) {
       toast.error(friendlyError(error));
@@ -52,7 +53,7 @@ export default function Safety() {
   const handleRespond = async (linkId: any, accept: boolean) => {
     try {
       await respondParentLink({ linkId, accept });
-      toast.success(accept ? "Liaison validée ✅" : "Demande refusée.");
+      toast.success(accept ? "Liaison validée" : "Demande refusée.");
     } catch (error) {
       toast.error(friendlyError(error));
     }
@@ -85,7 +86,7 @@ export default function Safety() {
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">🛡️ Sécurité</h1>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"><ShieldCheck className="size-6 text-primary" /> Sécurité</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             SOS, signalements, contacts de confiance et confidentialité — au même endroit.
           </p>
@@ -104,11 +105,12 @@ export default function Safety() {
               <a href="tel:112">
                 <Button variant="destructive"><PhoneCall className="size-4" /> Appeler le 112</Button>
               </a>
-              <Button variant="outline" onClick={() => setSosOpen(true)}>🚨 Déclencher une alerte SOS</Button>
+              <Button variant="outline" onClick={() => setSosOpen(true)}><Siren className="size-4" /> Déclencher une alerte SOS</Button>
               <Button variant="ghost" onClick={() => setReportOpen(true)}>Signaler un contenu</Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              ℹ️ L'appel d'urgence passe par le téléphone : l'application ne remplace pas les secours.
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
+              <span>L'appel d'urgence passe par le téléphone : l'application ne remplace pas les secours.</span>
             </p>
           </CardContent>
         </Card>
@@ -124,12 +126,12 @@ export default function Safety() {
             <CardContent className="space-y-3">
               {hasApprovedParent ? (
                 <p className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
-                  <Check className="size-4" /> Ton responsable est validé : il peut autoriser les missions 🟡 et reçoit tes alertes.
+                  <BadgeCheck className="size-4" /> Ton responsable est validé : il peut autoriser les missions soumises à autorisation et reçoit tes alertes.
                 </p>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Ajoute un responsable légal : certaines missions (🟡) nécessitent son autorisation.
+                    Ajoute un responsable légal : certaines missions nécessitent son autorisation.
                     Il reçoit aussi tes alertes SOS.
                   </p>
                   <div className="flex gap-2">
@@ -161,7 +163,10 @@ export default function Safety() {
                   <p className="text-sm font-semibold">Demandes en attente</p>
                   {family.pendingLinks.map((l: any) => (
                     <div key={l._id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                      <p className="text-sm">{l.teenEmoji} <strong>{l.teenName}</strong> veut te désigner comme responsable.</p>
+                      <p className="flex items-center gap-2 text-sm">
+                        <DataIcon name={l.teenIcon} className="size-4 text-muted-foreground" />
+                        <span><strong>{l.teenName}</strong> veut te désigner comme responsable.</span>
+                      </p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleRespond(l._id, true)}><Check className="size-4" /> Accepter</Button>
                         <Button size="sm" variant="outline" onClick={() => handleRespond(l._id, false)}><X className="size-4" /></Button>
@@ -175,7 +180,9 @@ export default function Safety() {
                   <p className="text-sm font-semibold">Ados suivis</p>
                   {family.teens.map((t: any) => (
                     <div key={t._id} className="flex items-center gap-3 rounded-lg border p-3">
-                      <span className="text-xl">{t.teenEmoji}</span>
+                      <span className="grid size-9 place-items-center rounded-full bg-secondary text-primary">
+                        <DataIcon name={t.teenIcon} className="size-4" />
+                      </span>
                       <p className="flex-1 text-sm font-medium">{t.teenName}</p>
                       <Badge variant="secondary">Suivi actif</Badge>
                     </div>
@@ -200,14 +207,15 @@ export default function Safety() {
               <p className="py-3 text-sm text-muted-foreground">Chargement…</p>
             ) : safetyEvents.length === 0 ? (
               <p className="py-3 text-sm text-muted-foreground">
-                Aucun événement — c'est une bonne nouvelle ✅ Les check-in/out et alertes apparaîtront ici.
+                Aucun événement — c'est une bonne nouvelle. Les check-in/out et alertes apparaîtront ici.
               </p>
             ) : (
               <div className="space-y-2">
                 {safetyEvents.map((e: any) => (
                   <div key={e._id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                    <span>
-                      {e.type === "sos" ? "🚨" : e.type === "check_in" ? "▶" : "✅"} {e.details ?? e.type}
+                    <span className="flex items-center gap-2">
+                      {e.type === "sos" ? <Siren className="size-4 text-rose-500" /> : e.type === "check_in" ? <Play className="size-4 text-primary" /> : <CircleCheck className="size-4 text-emerald-500" />}
+                      {e.details ?? e.type}
                     </span>
                     <span className="text-xs text-muted-foreground">{formatDateTime(e.createdAt)}</span>
                   </div>
@@ -236,7 +244,7 @@ export default function Safety() {
         <Dialog open={sosOpen} onOpenChange={setSosOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>🚨 Alerte SOS</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Siren className="size-4 text-rose-500" /> Alerte SOS</DialogTitle>
               <DialogDescription>
                 L'alerte est enregistrée et tes contacts de confiance sont notifiés.
                 En cas de danger immédiat, appelle le 112.

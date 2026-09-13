@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router";
-import { Plus } from "lucide-react";
+import { CheckCircle2, ClipboardList, FilePlus2, Handshake, Plus, Rocket, Search, Trash2 } from "lucide-react";
 
 export default function MyMissions() {
   const navigate = useNavigate();
@@ -48,11 +48,11 @@ export default function MyMissions() {
               <TabsContent key={status} value={status} className="mt-4">
                 {byStatus(status).length === 0 ? (
                   <EmptyState
-                    emoji={
-                      status === "published" ? "📋" :
-                      status === "assigned" ? "🤝" :
-                      status === "in_progress" ? "🚀" :
-                      status === "completed" ? "✅" : "🗑️"
+                    icon={
+                      status === "published" ? <ClipboardList className="size-7" /> :
+                      status === "assigned" ? <Handshake className="size-7" /> :
+                      status === "in_progress" ? <Rocket className="size-7" /> :
+                      status === "completed" ? <CheckCircle2 className="size-7" /> : <Trash2 className="size-7" />
                     }
                     title={
                       status === "published" ? "Aucune mission ouverte" :
@@ -64,7 +64,7 @@ export default function MyMissions() {
                     description={
                       status === "published"
                         ? isTeen
-                          ? "Tu n'as pas encore publié de mission — et ce n'est pas ton rôle 😉 Explore plutôt celles qui t'attendent près de toi."
+                          ? "En tant qu'ado, ton terrain de jeu c'est l'exploration : découvre les missions qui t'attendent près de toi."
                           : "Publie ta première mission : décris ton besoin, choisis Rapide ou Vérifiée, et reçois tes premiers candidats."
                         : status === "assigned"
                           ? "Dès que tu acceptes un candidat (ou qu'un ado prend une mission rapide), elle atterrit ici."
@@ -76,9 +76,9 @@ export default function MyMissions() {
                     }
                     actions={
                       status === "published" && !isTeen
-                        ? [{ label: "➕ Publier ma première mission", to: "/missions/create" }]
+                        ? [{ label: "Publier ma première mission", to: "/missions/create" }]
                         : status === "published" && isTeen
-                          ? [{ label: "🔍 Explorer les missions", to: "/missions", variant: "outline" }]
+                          ? [{ label: "Explorer les missions", to: "/missions", variant: "outline" }]
                           : undefined
                     }
                   />

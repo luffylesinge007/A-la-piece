@@ -40,25 +40,26 @@ export function levelForXp(xp: number) {
 // ---------------------------------------------------------------------------
 export interface BadgeDef {
   id: string;
-  emoji: string;
+  /** Pictogram name resolved client-side via the icon registry. */
+  icon: string;
   label: string;
   description: string;
   rarity: "common" | "rare" | "epic" | "legendary";
 }
 
 export const BADGES: (BadgeDef & { check: (s: BadgeStats) => boolean })[] = [
-  { id: "first_mission", emoji: "🏅", label: "Première mission", description: "Termine ta 1re mission", rarity: "common", check: (s) => s.completed >= 1 },
-  { id: "five_missions", emoji: "🔥", label: "5 missions", description: "Termine 5 missions", rarity: "common", check: (s) => s.completed >= 5 },
-  { id: "ten_missions", emoji: "🏆", label: "10 missions", description: "Termine 10 missions", rarity: "rare", check: (s) => s.completed >= 10 },
-  { id: "five_stars", emoji: "⭐", label: "5 étoiles", description: "Reçois une note parfaite", rarity: "rare", check: (s) => (s.bestRating ?? 0) >= 5 },
-  { id: "high_rating", emoji: "🌟", label: "Excellente note", description: "Note moyenne ≥ 4,5 (3 avis min.)", rarity: "epic", check: (s) => s.reviewCount >= 3 && (s.averageRating ?? 0) >= 4.5 },
-  { id: "quick_hero", emoji: "⚡", label: "Mission rapide", description: "Remporte une mission rapide", rarity: "common", check: (s) => s.quickWins >= 1 },
-  { id: "animaux", emoji: "🐕", label: "Expert animaux", description: "3 missions Animaux", rarity: "rare", check: (s) => (s.byCategory["animaux"] ?? 0) >= 3 },
-  { id: "jardinage", emoji: "🌱", label: "Main verte", description: "3 missions Jardinage", rarity: "rare", check: (s) => (s.byCategory["jardinage"] ?? 0) >= 3 },
-  { id: "tech", emoji: "💻", label: "Tech", description: "3 missions Informatique", rarity: "rare", check: (s) => (s.byCategory["informatique"] ?? 0) >= 3 },
-  { id: "punctual", emoji: "⏰", label: "Ponctuel", description: "Ponctualité 5/5 reçue", rarity: "common", check: (s) => (s.bestPunctuality ?? 0) >= 5 },
-  { id: "reliable", emoji: "💯", label: "Fiable", description: "Fiabilité 5/5 reçue", rarity: "common", check: (s) => (s.bestReliability ?? 0) >= 5 },
-  { id: "marathon", emoji: "💪", label: "Endurance", description: "20 missions terminées", rarity: "epic", check: (s) => s.completed >= 20 },
+  { id: "first_mission", icon: "medal", label: "Première mission", description: "Termine ta 1re mission", rarity: "common", check: (s) => s.completed >= 1 },
+  { id: "five_missions", icon: "flame", label: "5 missions", description: "Termine 5 missions", rarity: "common", check: (s) => s.completed >= 5 },
+  { id: "ten_missions", icon: "trophy", label: "10 missions", description: "Termine 10 missions", rarity: "rare", check: (s) => s.completed >= 10 },
+  { id: "five_stars", icon: "star", label: "5 étoiles", description: "Reçois une note parfaite", rarity: "rare", check: (s) => (s.bestRating ?? 0) >= 5 },
+  { id: "high_rating", icon: "sparkles", label: "Excellente note", description: "Note moyenne ≥ 4,5 (3 avis min.)", rarity: "epic", check: (s) => s.reviewCount >= 3 && (s.averageRating ?? 0) >= 4.5 },
+  { id: "quick_hero", icon: "zap", label: "Mission rapide", description: "Remporte une mission rapide", rarity: "common", check: (s) => s.quickWins >= 1 },
+  { id: "animaux", icon: "dog", label: "Expert animaux", description: "3 missions Animaux", rarity: "rare", check: (s) => (s.byCategory["animaux"] ?? 0) >= 3 },
+  { id: "jardinage", icon: "sprout", label: "Main verte", description: "3 missions Jardinage", rarity: "rare", check: (s) => (s.byCategory["jardinage"] ?? 0) >= 3 },
+  { id: "tech", icon: "laptop", label: "Tech", description: "3 missions Informatique", rarity: "rare", check: (s) => (s.byCategory["informatique"] ?? 0) >= 3 },
+  { id: "punctual", icon: "clock", label: "Ponctuel", description: "Ponctualité 5/5 reçue", rarity: "common", check: (s) => (s.bestPunctuality ?? 0) >= 5 },
+  { id: "reliable", icon: "target", label: "Fiable", description: "Fiabilité 5/5 reçue", rarity: "common", check: (s) => (s.bestReliability ?? 0) >= 5 },
+  { id: "marathon", icon: "dumbbell", label: "Endurance", description: "20 missions terminées", rarity: "epic", check: (s) => s.completed >= 20 },
 ];
 
 export interface BadgeStats {

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APPLICATION_STATUS_META, eurosFromNumber, formatDateShort, friendlyError, formatDuration } from "@/lib/format";
-import { BadgeCheck, Check, Clock, MapPin, Star, Trophy, X, Zap } from "lucide-react";
+import { CategoryIcon, DataIcon } from "@/components/icons";
+import { BadgeCheck, Check, Clock, Hourglass, Inbox, Star, Sprout, Trophy, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -27,7 +28,7 @@ function AdultApplications() {
     setBusy(id);
     try {
       const bookingId = await accept({ applicationId: id as any });
-      toast.success("Candidature acceptée 🎉 Finalisez avec le paiement sécurisé.");
+      toast.success("Candidature acceptée — finalisez avec le paiement sécurisé.");
       navigate(`/reservations/${bookingId}`);
     } catch (error) {
       toast.error(friendlyError(error));
@@ -65,10 +66,10 @@ function AdultApplications() {
   return (
     <div className="space-y-5">
       <section>
-        <h2 className="mb-3 font-display text-lg font-bold">⏳ À traiter ({pending.length})</h2>
+        <h2 className="flex items-center gap-2 mb-3 font-display text-lg font-bold"><Hourglass className="size-4 text-amber-500" /> À traiter ({pending.length})</h2>
         {pending.length === 0 ? (
           <EmptyState
-            emoji="📭"
+            icon={<Inbox className="size-7" />}
             title="Aucune candidature en attente"
             description="Publiez une mission pour recevoir vos premières candidatures — les 5 premiers intéressés peuvent postuler sur chaque mission vérifiée."
             actions={[{ label: "Publier une mission", to: "/missions/create" }]}
@@ -79,8 +80,8 @@ function AdultApplications() {
               <Card key={a._id} className="card-shadow border-border/60">
                 <CardContent className="p-5">
                   <div className="flex flex-wrap items-start gap-4">
-                    <span className="grid size-12 shrink-0 place-items-center rounded-full bg-secondary text-2xl">
-                      {a.teen?.avatarEmoji ?? "🧑‍🎓"}
+                    <span className="grid size-12 shrink-0 place-items-center rounded-full bg-secondary text-primary">
+                      <DataIcon name={a.teen?.avatarIcon} className="size-6" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -185,9 +186,9 @@ function TeenApplications() {
   if (apps.length === 0) {
     return (
       <EmptyState
-        emoji="🌱"
+        icon={<Sprout className="size-7" />}
         title="Aucune candidature pour l'instant"
-        description="Explore les missions ouvertes et candidate : la première réponse arrive souvent vite ! Les missions rapides ⚡ sont prises au premier clic."
+        description="Explore les missions ouvertes et candidate : la première réponse arrive souvent vite ! Les missions rapides sont prises au premier clic."
         actions={[{ label: "Explorer les missions", to: "/missions" }]}
       />
     );
@@ -210,8 +211,8 @@ function TeenApplications() {
       {apps.map((a: any) => (
         <Card key={a.application._id} className="card-shadow border-border/60">
           <CardContent className="flex flex-wrap items-center gap-4 p-4">
-            <span className="grid size-11 place-items-center rounded-xl bg-secondary text-xl">
-              {a.mission.category?.emoji ?? "📌"}
+            <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary">
+              <CategoryIcon category={a.mission.category} className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

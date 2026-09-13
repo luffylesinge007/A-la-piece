@@ -35,7 +35,7 @@ async function candidateCard(ctx: any, mission: any, app: any) {
       ? {
           userId: profile.userId,
           firstName: profile.firstName,
-          avatarEmoji: profile.avatarEmoji,
+          avatarIcon: profile.avatarIcon,
           city: profile.city,
           bio: profile.bio,
           skills: profile.skills ?? [],
@@ -119,7 +119,7 @@ export const apply = mutation({
       );
     }
 
-    // 🛡️ Verified missions accept only the first `maxApplicants` (default 5).
+    // Verified missions accept only the first `maxApplicants` (default 5).
     const maxApplicants = mission.maxApplicants ?? 5;
     if ((mission.missionType ?? "verified") === "verified") {
       const activeApps = await ctx.db
@@ -133,7 +133,7 @@ export const apply = mutation({
         throw new Error("COMPLET: les candidatures sont complètes pour cette mission.");
       }
     } else {
-      // ⚡ Quick missions are claimed, not applied to.
+      // Quick missions are claimed, not applied to.
       throw new Error("Cette mission est une Mission rapide : utilise « Je prends la mission ».");
     }
 
@@ -168,7 +168,7 @@ export const apply = mutation({
     await createNotification(ctx, {
       userId: mission.publisherId,
       type: "application",
-      title: isFull ? `👥 ${afterCount} candidats — complet !` : "👤 Nouveau candidat",
+      title: isFull ? `${afterCount} candidats — complet !` : "Nouveau candidat",
       body: isFull
         ? `« ${mission.title} » a reçu ${maxApplicants} candidatures : compare les profils et choisis ta personne.`
         : `${myProfile?.firstName ?? "Un ado"} veut réaliser « ${mission.title} ».`,
@@ -179,7 +179,7 @@ export const apply = mutation({
   },
 });
 
-/** ⚡ Claim a quick mission: first teen to click wins it — auto-accept + booking. */
+/** Claim a quick mission: first teen to click wins it — auto-accept + booking. */
 export const claimQuick = mutation({
   args: { missionId: v.id("missions") },
   handler: async (ctx, args) => {
@@ -256,7 +256,7 @@ export const claimQuick = mutation({
     await insertSystemMessage(
       ctx,
       conversationId,
-      `⚡ Mission rapide prise par ${await teenFirstName(ctx, user._id)} ! Prochaine étape : le paiement sécurisé.`,
+      `Mission rapide prise par ${await teenFirstName(ctx, user._id)} ! Prochaine étape : le paiement sécurisé.`,
     );
     await ctx.db.patch(conversationId, { bookingId });
 
@@ -264,14 +264,14 @@ export const claimQuick = mutation({
     await createNotification(ctx, {
       userId: mission.publisherId,
       type: "mission",
-      title: "⚡ Mission prise !",
+      title: "Mission prise !",
       body: `${await teenFirstName(ctx, user._id)} vient de prendre « ${mission.title} ». Finalise avec le paiement sécurisé.`,
       link: `/reservations/${bookingId}`,
     });
     await createNotification(ctx, {
       userId: user._id,
       type: "mission",
-      title: "🎉 C'est pour toi !",
+      title: "C'est pour toi !",
       body: `« ${mission.title} » t'est attribuée — ${publisherProfile?.firstName ?? "l'adulte"} doit confirmer le paiement.`,
       link: `/reservations/${bookingId}`,
     });
@@ -355,14 +355,14 @@ export const accept = mutation({
     await insertSystemMessage(
       ctx,
       conversationId,
-      "Sélection confirmée 🎉 — la mission est réservée en attente de paiement.",
+      "Sélection confirmée — la mission est réservée en attente de paiement.",
     );
     await ctx.db.patch(conversationId, { bookingId });
 
     await createNotification(ctx, {
       userId: app.teenId,
       type: "application",
-      title: "🎉 Félicitations, tu es sélectionné·e !",
+      title: "Félicitations, tu es sélectionné·e !",
       body: `« ${mission.title} » — ${user.name ?? "l'adulte"} t'a choisi·e. Chat ouvert.`,
       link: `/reservations/${bookingId}`,
     });

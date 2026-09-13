@@ -5,50 +5,52 @@ import { useAuth } from "@/hooks/use-auth";
 import logo from "@/assets/logo.svg";
 import { motion } from "framer-motion";
 import {
-  ArrowRight, BadgeCheck, MapPin, Search, ShieldCheck, Sparkles, Star, Wallet,
+  ArrowRight, BadgeCheck, CircleDot, CircleCheck, Ban, CreditCard, GraduationCap,
+  Hand, HeartHandshake, Laptop, Lock, MapPin, MousePointerClick, PawPrint, Search,
+  ShieldCheck, Sparkles, Star, Timer, UserRound, Wallet, Hammer, Sprout, type LucideIcon,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
-const DEMO_MISSIONS = [
+const DEMO_MISSIONS: { icon: LucideIcon; title: string; price: string; duration: string; zone: string; tag: string; tagClass: string }[] = [
   {
-    emoji: "🐶",
+    icon: PawPrint,
     title: "Promenade de chien",
     price: "15 €",
     duration: "1 h",
     zone: "à ~800 m",
-    tag: "🟢 Autorisée",
+    tag: "Autorisée",
     tagClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
   {
-    emoji: "🌳",
+    icon: Sprout,
     title: "Désherbage du jardin",
     price: "20 €",
     duration: "2 h",
     zone: "à ~1,2 km",
-    tag: "🟡 Autorisation parentale",
+    tag: "Autorisation parentale",
     tagClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
-    emoji: "🔨",
+    icon: Hammer,
     title: "Montage d'étagère",
     price: "35 €",
     duration: "2 h 30",
     zone: "à ~2 km",
-    tag: "🔴 Réservée aux majeurs",
+    tag: "Réservée aux majeurs",
     tagClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   },
 ];
 
-const TEEN_STEPS = [
-  { icon: "🔎", title: "Trouve une mission", text: "Filtre par quartier, prix, durée. Chaque mission affiche si elle est autorisée pour ton âge." },
-  { icon: "🙋", title: "Candidate en 1 minute", text: "Un message suffit. L'adulte voit ton profil, tes compétences et ta réputation." },
-  { icon: "✅", title: "Réussis la mission", text: "Check-in, check-out, code PIN si besoin. Puis paiement direct dans ton portefeuille." },
+const TEEN_STEPS: { icon: LucideIcon; title: string; text: string }[] = [
+  { icon: Search, title: "Trouve une mission", text: "Filtre par quartier, prix, durée. Chaque mission affiche si elle est autorisée pour ton âge." },
+  { icon: Hand, title: "Candidate en 1 minute", text: "Un message suffit. L'adulte voit ton profil, tes compétences et ta réputation." },
+  { icon: CircleCheck, title: "Réussis la mission", text: "Check-in, check-out, code PIN si besoin. Puis paiement direct dans ton portefeuille." },
 ];
 
-const ADULT_STEPS = [
-  { icon: "⚡", title: "Publie en 2 minutes", text: "Décris ton besoin. Le moteur de prix suggère un montant juste, ajustable." },
-  { icon: "🧑‍🎓", title: "Choisis ton aide", text: "Reçois des candidatures avec profils, compétences et compatibilité détaillée." },
-  { icon: "💳", title: "Paye en sécurité", text: "Paiement Stripe au moment de la réservation. Les fonds sont versés après la mission." },
+const ADULT_STEPS: { icon: LucideIcon; title: string; text: string }[] = [
+  { icon: Timer, title: "Publie en 2 minutes", text: "Décris ton besoin. Le moteur de prix suggère un montant juste, ajustable." },
+  { icon: GraduationCap, title: "Choisis ton aide", text: "Reçois des candidatures avec profils, compétences et compatibilité détaillée." },
+  { icon: CreditCard, title: "Paye en sécurité", text: "Paiement Stripe au moment de la réservation. Les fonds sont versés après la mission." },
 ];
 
 export default function Landing() {
@@ -109,14 +111,20 @@ export default function Landing() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" className="h-12 bg-white px-7 text-base text-primary shadow-lg hover:bg-white/90 hover:text-primary" asChild>
-                <Link to="/auth?mode=signup&as=teen">🧑‍🎓 Je suis ado — gagner de l'argent</Link>
+                <Link to="/auth?mode=signup&as=teen">
+                  <GraduationCap className="size-4" /> Je suis ado — gagner de l'argent
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className="h-12 border-white/40 bg-white/5 px-7 text-base text-white hover:bg-white/10 hover:text-white" asChild>
-                <Link to="/auth?mode=signup&as=adult">👨 Je cherche de l'aide</Link>
+                <Link to="/auth?mode=signup&as=adult">
+                  <UserRound className="size-4" /> Je cherche de l'aide
+                </Link>
               </Button>
             </div>
-            <p className="mt-4 text-xs text-white/65">
-              🛡️ Missions filtrées par âge · Autorisation parentale intégrée · Paiement sécurisé Stripe
+            <p className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs text-white/65">
+              <ShieldCheck className="size-3.5" /> Missions filtrées par âge
+              <span aria-hidden>·</span> Autorisation parentale intégrée
+              <span aria-hidden>·</span> Paiement sécurisé Stripe
             </p>
           </div>
 
@@ -132,14 +140,16 @@ export default function Landing() {
                 <Card className="card-shadow h-full border-border/60 transition-transform hover:-translate-y-0.5">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
-                      <span className="text-3xl">{m.emoji}</span>
+                      <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary">
+                        <m.icon className="size-5" />
+                      </span>
                       <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
                         {m.price}
                       </span>
                     </div>
                     <h3 className="mt-3 font-display text-base font-bold">{m.title}</h3>
                     <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>⏱️ {m.duration}</span>
+                      <span className="flex items-center gap-1"><Timer className="size-3" /> {m.duration}</span>
                       <span aria-hidden>·</span>
                       <span className="flex items-center gap-0.5"><MapPin className="size-3" /> {m.zone}</span>
                     </p>
@@ -165,7 +175,9 @@ export default function Landing() {
           <div className="mt-12 grid gap-10 lg:grid-cols-2">
             <div>
               <div className="mb-5 flex items-center gap-2">
-                <span className="grid size-9 place-items-center rounded-xl bg-emerald-500/10 text-lg">🧑‍🎓</span>
+                <span className="grid size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <GraduationCap className="size-5" />
+                </span>
                 <h3 className="font-display text-xl font-bold">Pour les adolescents</h3>
               </div>
               <div className="space-y-4">
@@ -178,7 +190,7 @@ export default function Landing() {
                       {i < TEEN_STEPS.length - 1 && <span className="mt-1 h-full w-px bg-border" />}
                     </div>
                     <div className="pb-2">
-                      <p className="font-semibold">{s.icon} {s.title}</p>
+                      <p className="flex items-center gap-1.5 font-semibold"><s.icon className="size-4 text-primary" /> {s.title}</p>
                       <p className="mt-1 text-sm text-muted-foreground">{s.text}</p>
                     </div>
                   </div>
@@ -187,7 +199,9 @@ export default function Landing() {
             </div>
             <div>
               <div className="mb-5 flex items-center gap-2">
-                <span className="grid size-9 place-items-center rounded-xl bg-brand/10 text-lg">👨</span>
+                <span className="grid size-9 place-items-center rounded-xl bg-brand/10 text-brand">
+                  <UserRound className="size-5" />
+                </span>
                 <h3 className="font-display text-xl font-bold">Pour les adultes</h3>
               </div>
               <div className="space-y-4">
@@ -200,7 +214,7 @@ export default function Landing() {
                       {i < ADULT_STEPS.length - 1 && <span className="mt-1 h-full w-px bg-border" />}
                     </div>
                     <div className="pb-2">
-                      <p className="font-semibold">{s.icon} {s.title}</p>
+                      <p className="flex items-center gap-1.5 font-semibold"><s.icon className="size-4 text-brand" /> {s.title}</p>
                       <p className="mt-1 text-sm text-muted-foreground">{s.text}</p>
                     </div>
                   </div>
@@ -228,13 +242,14 @@ export default function Landing() {
             </p>
             <ul className="mt-6 space-y-3 text-sm">
               {[
-                "🟢 Autorisée — adaptée à ton âge et à ton profil",
-                "🟡 Autorisation nécessaire — un responsable valide avant candidature",
-                "🔴 Réservée aux majeurs — bloquée côté serveur, sans exception",
-                "⚫ Interdite — non publiée pour les mineurs",
+                { icon: CircleCheck, tone: "text-emerald-600 dark:text-emerald-400", text: "Autorisée — adaptée à ton âge et à ton profil" },
+                { icon: CircleDot, tone: "text-amber-600 dark:text-amber-400", text: "Autorisation nécessaire — un responsable valide avant candidature" },
+                { icon: Ban, tone: "text-rose-600 dark:text-rose-400", text: "Réservée aux majeurs — bloquée côté serveur, sans exception" },
+                { icon: Lock, tone: "text-zinc-500", text: "Interdite — non publiée pour les mineurs" },
               ].map((rule) => (
-                <li key={rule} className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2.5 card-shadow">
-                  {rule}
+                <li key={rule.text} className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2.5 card-shadow">
+                  <rule.icon className={`mt-0.5 size-4 shrink-0 ${rule.tone}`} />
+                  <span>{rule.text}</span>
                 </li>
               ))}
             </ul>
@@ -266,14 +281,16 @@ export default function Landing() {
           </h2>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { emoji: "🧑‍🎓", title: "Ados", text: "Missions adaptées à leur âge, XP, portefeuille, chat protégé." },
-              { emoji: "👨", title: "Adultes", text: "Publication en 2 minutes, candidatures qualifiées, paiement Stripe." },
-              { emoji: "👨‍👩‍👧", title: "Parents", text: "Liaison avec le compte ado, validations d'autorisation, alertes SOS." },
-              { emoji: "🏢", title: "Organisations", text: "Architecture prête pour associations, commerces et entreprises." },
+              { icon: GraduationCap, tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", title: "Ados", text: "Missions adaptées à leur âge, XP, portefeuille, chat protégé." },
+              { icon: UserRound, tone: "bg-brand/10 text-brand", title: "Adultes", text: "Publication en 2 minutes, candidatures qualifiées, paiement Stripe." },
+              { icon: HeartHandshake, tone: "bg-primary/10 text-primary", title: "Parents", text: "Liaison avec le compte ado, validations d'autorisation, alertes SOS." },
+              { icon: Laptop, tone: "bg-secondary text-secondary-foreground", title: "Organisations", text: "Architecture prête pour associations, commerces et entreprises." },
             ].map((r) => (
               <Card key={r.title} className="card-shadow border-border/60 text-center transition-transform hover:-translate-y-0.5">
                 <CardContent className="p-6">
-                  <span className="text-4xl">{r.emoji}</span>
+                  <span className={`mx-auto grid size-12 place-items-center rounded-2xl ${r.tone}`}>
+                    <r.icon className="size-6" />
+                  </span>
                   <h3 className="mt-3 font-display text-lg font-bold">{r.title}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{r.text}</p>
                 </CardContent>
@@ -285,7 +302,7 @@ export default function Landing() {
           <div className="mt-14 grid gap-4 rounded-2xl border bg-card p-8 card-shadow sm:grid-cols-3">
             {[
               { value: "15–17", label: "tranche d'âge ado prioritaire" },
-              { value: "🟢🟡🔴", label: "3 niveaux d'accès évalués par mission" },
+              { value: "3", label: "niveaux d'accès évalués par mission" },
               { value: "100 %", label: "des paiements passent par Stripe Checkout" },
             ].map((s) => (
               <div key={s.label} className="text-center">

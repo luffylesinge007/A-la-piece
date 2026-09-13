@@ -9,8 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CATEGORIES, getCategory } from "@/convex/lib/safety";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { CATEGORIES } from "@/convex/lib/safety";
+import { DataIcon } from "@/components/icons";
+import { Clock, Flame, Rocket, Search, SlidersHorizontal, Wallet, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const SORTS = [
@@ -52,10 +53,10 @@ export default function Missions() {
   }, [missions, sort]);
 
   const shortcuts = [
-    { id: "recent", emoji: "🆕", label: "Nouvelles" },
-    { id: "popular", emoji: "🔥", label: "Populaires" },
-    { id: "price_desc", emoji: "💰", label: "Mieux payées" },
-    { id: "duration", emoji: "⚡", label: "Rapides" },
+    { id: "recent", icon: Rocket, label: "Nouvelles" },
+    { id: "popular", icon: Flame, label: "Populaires" },
+    { id: "price_desc", icon: Wallet, label: "Mieux payées" },
+    { id: "duration", icon: Clock, label: "Rapides" },
   ];
 
   const hasFilters = category !== "all" || maxPrice !== "all" || maxDuration !== "all";
@@ -64,7 +65,7 @@ export default function Missions() {
     <AppShell>
       <div className="space-y-5">
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">🔎 Explorer les missions</h1>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"><Search className="size-6 text-primary" /> Explorer les missions</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isTeen
               ? "Chaque mission affiche si elle est autorisée pour ton âge."
@@ -102,7 +103,7 @@ export default function Missions() {
                 sort === s.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-card hover:border-primary/40"
               }`}
             >
-              <span>{s.emoji}</span> {s.label}
+              <s.icon className="size-3.5" /> {s.label}
             </button>
           ))}
           <button
@@ -126,7 +127,11 @@ export default function Missions() {
                   <SelectContent>
                     <SelectItem value="all">Toutes</SelectItem>
                     {CATEGORIES.map((c) => (
-                      <SelectItem key={c.slug} value={c.slug}>{c.emoji} {c.label}</SelectItem>
+                      <SelectItem key={c.slug} value={c.slug}>
+                        <span className="flex items-center gap-2">
+                          <DataIcon name={c.icon} className="size-3.5" /> {c.label}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -178,7 +183,7 @@ export default function Missions() {
         ) : sorted.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
-              <span className="text-4xl">🕵️</span>
+              <span className="grid size-14 place-items-center rounded-2xl bg-secondary text-muted-foreground"><Search className="size-6" /></span>
               <p className="font-display text-lg font-bold">Aucune mission trouvée</p>
               <p className="max-w-sm text-sm text-muted-foreground">
                 Essaie d'élargir tes filtres ou de supprimer la recherche. De nouvelles missions arrivent chaque jour !

@@ -32,8 +32,8 @@ export const listConversations = query({
         missionDate: mission?.scheduledDate ?? null,
         missionTime: mission?.scheduledTime ?? null,
         counterpart: counterpart
-          ? { firstName: counterpart.firstName, avatarEmoji: counterpart.avatarEmoji ?? "👤" }
-          : { firstName: "Utilisateur", avatarEmoji: "👤" },
+          ? { firstName: counterpart.firstName, avatarIcon: counterpart.avatarIcon ?? null }
+          : { firstName: "Utilisateur", avatarIcon: null },
       });
     }
     return result;
@@ -102,7 +102,7 @@ export const sendMessage = mutation({
       await createNotification(ctx, {
         userId: counterpartId,
         type: "message",
-        title: `💬 ${senderProfile?.firstName ?? "Nouveau message"}`,
+        title: senderProfile?.firstName ?? "Nouveau message",
         body: body.slice(0, 80),
         link: `/messages/${args.conversationId}`,
       });

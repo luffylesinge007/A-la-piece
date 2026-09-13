@@ -5,15 +5,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import {
-  Bell, CalendarCheck, Compass, FileText, Home, LayoutGrid, LogOut,
+import { cn } from "@/lib/utils";import { Bell, CalendarCheck, Compass, FileText, Home, LayoutGrid, LogOut,
   MessageSquare, Moon, Plus, Shield, Sun, User, Wallet, Settings,
 } from "lucide-react";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { formatDateTime } from "@/lib/format";
+import { DataIcon, ProfileAvatar } from "@/components/icons";
+import { Briefcase, Lightbulb, ShieldCheck, Sparkles } from "lucide-react";
 import logo from "@/assets/logo.svg";
 
 export type AccountType = "teen" | "adult" | "parent" | "organization" | "admin" | "moderator";
@@ -58,7 +58,7 @@ function navFor(type: AccountType | undefined): NavItem[] {
   ];
 }
 
-/** Mobile bottom-nav center action: 🔎 Explorer for teens, ➕ Publier for adults. */
+/** Mobile bottom-nav center action: Explorer for teens, Publier for adults. */
 function centerActionFor(type: AccountType | undefined): { to: string; label: string; icon: ReactNode } {
   if (type === "teen") {
     return { to: "/missions", label: "Explorer", icon: <Compass className="size-5" /> };
@@ -143,7 +143,7 @@ function NotificationsMenu() {
         <div className="max-h-80 overflow-y-auto">
           {notifications.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Aucune notification pour le moment 🕊️
+              Aucune notification pour le moment
             </p>
           ) : (
             notifications.map((n: any) => (
@@ -209,7 +209,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <img src={logo} alt="" className="size-7 rounded-lg" />
             <span className="hidden sm:inline">À LA PIÈCE</span>
             <Badge variant="secondary" className="hidden text-[10px] md:inline-flex">
-              {isTeen ? "⚡ Mode ado" : "💼 Mode adulte"}
+              <span className="flex items-center gap-1">
+                {isTeen ? <Sparkles className="size-3" /> : <Briefcase className="size-3" />}
+                {isTeen ? "Mode ado" : "Mode adulte"}
+              </span>
             </Badge>
           </Link>
           <div className="flex items-center gap-1.5">
@@ -219,15 +222,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               <PopoverTrigger asChild>
                 <button className="ml-1 rounded-full outline-none ring-primary/50 focus-visible:ring-2" aria-label="Menu du compte">
                   <Avatar className="size-8 border">
-                    <AvatarFallback className="bg-primary/10 text-sm">
-                      {profile?.avatarEmoji ?? "👤"}
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      <ProfileAvatar icon={profile?.avatarIcon} name={firstName} className="size-8" iconClassName="size-4" />
                     </AvatarFallback>
                   </Avatar>
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-2">
                 <div className="px-2 py-1.5">
-                  <p className="text-sm font-semibold">Bonjour {firstName} 👋</p>
+                  <p className="text-sm font-semibold">Bonjour {firstName}</p>
                   <Badge variant="secondary" className="mt-1 text-[11px]">
                     {TYPE_LABEL[user?.accountType as AccountType] ?? "Membre"}
                   </Badge>
@@ -262,12 +265,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
           {isTeen ? (
-            <div className="mt-auto rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
-              🛡️ Besoin d'aide pendant une mission ? Le bouton <strong>SOS</strong> est toujours sur la page mission.
+            <div className="mt-auto flex gap-2 rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+              <ShieldCheck className="size-4 shrink-0 text-emerald-500" />
+              <span>Besoin d'aide pendant une mission ? Le bouton <strong>SOS</strong> est toujours sur la page mission.</span>
             </div>
           ) : (
-            <div className="mt-auto rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
-              💡 Astuce : une <strong>Mission rapide ⚡</strong> est prise par le premier adolescent disponible.
+            <div className="mt-auto flex gap-2 rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+              <Lightbulb className="size-4 shrink-0 text-coin" />
+              <span>Astuce : une <strong>Mission rapide</strong> est prise par le premier adolescent disponible.</span>
             </div>
           )}
         </aside>

@@ -36,7 +36,7 @@ export const REPORT_STATUS = ["new", "in_progress", "resolved", "rejected"] as c
 export const NOTIFICATION_TYPE = [
   "mission", "message", "application", "payment", "quest", "xp", "badge", "challenge", "safety", "parent", "system",
 ] as const;
-// Mission types: ⚡ quick (first teen to claim wins) / 🛡️ verified (adult picks among capped applications)
+// Mission types: quick (first teen to claim wins) / verified (adult picks among capped applications)
 export const MISSION_TYPES = ["quick", "verified"] as const;
 export const missionTypeValidator = v.union(...MISSION_TYPES.map((t) => v.literal(t)));
 
@@ -74,6 +74,9 @@ const schema = defineSchema(
       lastName: v.optional(v.string()),
       city: v.optional(v.string()),
       bio: v.optional(v.string()),
+      /** Pictogram name (src/components/icons.tsx) — replaces the old avatarEmoji. */
+      avatarIcon: v.optional(v.string()),
+      /** @deprecated legacy emoji avatar (pre-pictogram rows); read by the data migration only. */
       avatarEmoji: v.optional(v.string()),
       // teen only
       birthDate: v.optional(v.string()), // ISO date — never exposed publicly
@@ -116,7 +119,8 @@ const schema = defineSchema(
     categories: defineTable({
       slug: v.string(),
       label: v.string(),
-      emoji: v.string(),
+      /** Pictogram name (src/components/icons.tsx). */
+      icon: v.string(),
       teenFriendly: v.boolean(),
       riskLevel: riskLevelValidator,
     }).index("by_slug", ["slug"]),

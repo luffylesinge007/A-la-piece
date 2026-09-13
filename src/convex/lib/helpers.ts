@@ -46,7 +46,7 @@ export async function effectiveAge(ctx: QueryCtx, user: Doc<"users">): Promise<n
 
 /**
  * Does this teen have an approved parent link (parental supervision)?
- * Parental approval is required for 🟡 missions — safety rule, never bypassed.
+ * Parental approval is required for restricted missions — safety rule, never bypassed.
  */
 export async function hasApprovedParent(ctx: QueryCtx, teenUserId: Id<"users">): Promise<boolean> {
   const link = await ctx.db

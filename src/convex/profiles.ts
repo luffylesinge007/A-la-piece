@@ -42,7 +42,7 @@ export const publicProfile = query({
       firstName: profile.firstName,
       city: profile.city,
       bio: profile.bio,
-      avatarEmoji: profile.avatarEmoji,
+      avatarIcon: profile.avatarIcon,
       skills: profile.skills ?? [],
       availability: profile.availability ?? [],
       verifiedEmail: profile.verifiedEmail ?? false,
@@ -68,7 +68,7 @@ export const completeOnboarding = mutation({
     lastName: v.optional(v.string()),
     city: v.optional(v.string()),
     birthDate: v.optional(v.string()),
-    avatarEmoji: v.optional(v.string()),
+    avatarIcon: v.optional(v.string()),
     bio: v.optional(v.string()),
     interests: v.optional(v.array(v.string())),
     skills: v.optional(v.array(v.string())),
@@ -99,7 +99,7 @@ export const completeOnboarding = mutation({
       lastName: args.lastName?.trim(),
       city: args.city?.trim(),
       bio: args.bio?.trim(),
-      avatarEmoji: args.avatarEmoji ?? (args.accountType === "teen" ? "🧑‍🎓" : "👤"),
+      avatarIcon: args.avatarIcon ?? (args.accountType === "teen" ? "graduation-cap" : "user"),
       birthDate: args.accountType === "teen" ? args.birthDate : undefined,
       interests: args.interests,
       skills: args.skills,
@@ -129,7 +129,7 @@ export const completeOnboarding = mutation({
     await ctx.db.insert("notifications", {
       userId: user._id,
       type: "system",
-      title: "Bienvenue sur À LA PIÈCE 👋",
+      title: "Bienvenue sur À LA PIÈCE",
       body:
         args.accountType === "teen"
           ? "Complète tes disponibilités et découvre tes premières missions."
@@ -150,7 +150,7 @@ export const updateProfile = mutation({
     lastName: v.optional(v.string()),
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
-    avatarEmoji: v.optional(v.string()),
+    avatarIcon: v.optional(v.string()),
     interests: v.optional(v.array(v.string())),
     skills: v.optional(v.array(v.string())),
     availability: v.optional(v.array(v.string())),
@@ -292,7 +292,7 @@ export const respondParentLink = mutation({
       await ctx.db.insert("notifications", {
         userId: link.teenUserId,
         type: "parent",
-        title: "Responsable validé ✅",
+        title: "Responsable validé",
         body: "Ton responsable légal peut maintenant autoriser certaines missions.",
         link: "/securite",
         read: false,
@@ -302,7 +302,7 @@ export const respondParentLink = mutation({
   },
 });
 
-/** Parental approval for a specific 🟡 mission. */
+/** Parental approval for a restricted (parental-approval) mission. */
 export const approveMissionAsParent = mutation({
   args: { missionId: v.id("missions") },
   handler: async (ctx, args) => {
@@ -316,7 +316,7 @@ export const approveMissionAsParent = mutation({
       await ctx.db.insert("notifications", {
         userId: teenId,
         type: "parent",
-        title: "Mission autorisée ✅",
+        title: "Mission autorisée",
         body: `Ton responsable a autorisé « ${mission.title} ».`,
         link: `/missions/${args.missionId}`,
         read: false,

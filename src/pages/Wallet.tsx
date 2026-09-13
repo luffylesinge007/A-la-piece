@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { euros, friendlyError, formatDateTime } from "@/lib/format";
-import { Plus, Target, Trash2, Wallet as WalletIcon } from "lucide-react";
+import { Lightbulb, Plus, Target, Trash2, Wallet as WalletIcon, CalendarRange, Rocket } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -43,8 +43,7 @@ export default function Wallet() {
     }
     setBusy(true);
     try {
-      await addGoal({ label: goalLabel.trim(), targetCents: target });
-      toast.success("Objectif créé 🎯");
+      await addGoal({ label: goalLabel.trim(), targetCents: target });                      toast.success("Objectif créé");
       setGoalOpen(false);
       setGoalLabel("");
       setGoalTarget("");
@@ -61,7 +60,7 @@ export default function Wallet() {
     setBusy(true);
     try {
       await allocate({ goalId: allocOpen._id, amountCents: amount });
-      toast.success("Épargne mise de côté 💰");
+      toast.success("Épargne mise de côté");
       setAllocOpen(null);
       setAllocAmount("");
     } catch (error) {
@@ -75,7 +74,7 @@ export default function Wallet() {
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">💰 Mon portefeuille</h1>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"><WalletIcon className="size-6 text-primary" /> Mon portefeuille</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isTeen
               ? "Ton argent gagné mission après mission. Retrait via ton responsable bientôt disponible."
@@ -108,7 +107,7 @@ export default function Wallet() {
                 <CardContent className="p-5">
                   <p className="text-xs font-medium text-muted-foreground">Total gagné</p>
                   <p className="mt-1 font-display text-2xl font-bold">{euros(wallet.totalEarnedCents)}</p>
-                  <p className="text-[11px] text-muted-foreground">depuis le début 🚀</p>
+                  <p className="text-[11px] text-muted-foreground">depuis le début</p>
                 </CardContent>
               </Card>
             </>
@@ -118,13 +117,13 @@ export default function Wallet() {
           <div className="grid grid-cols-2 gap-3">
             <Card className="card-shadow border-coin/40 bg-coin/5">
               <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">📅 Cette semaine</p>
+                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><CalendarRange className="size-3.5" /> Cette semaine</p>
                 <p className="mt-1 font-display text-xl font-extrabold text-amber-700 dark:text-coin">{euros(stats.weekCents)}</p>
               </CardContent>
             </Card>
             <Card className="card-shadow border-border/60">
               <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">🗓️ Ce mois-ci</p>
+                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><CalendarRange className="size-3.5" /> Ce mois-ci</p>
                 <p className="mt-1 font-display text-xl font-extrabold">{euros(stats.monthCents)}</p>
               </CardContent>
             </Card>
@@ -134,7 +133,7 @@ export default function Wallet() {
         {/* Savings goals */}
         <Card className="card-shadow border-border/60">
           <CardHeader className="flex-row items-center justify-between pb-3">
-            <CardTitle className="font-display text-base">🎯 Mes objectifs</CardTitle>
+            <CardTitle className="flex items-center gap-2 font-display text-base"><Target className="size-4 text-primary" /> Mes objectifs</CardTitle>
             <Button size="sm" variant="outline" onClick={() => setGoalOpen(true)}>
               <Plus className="size-4" /> Nouvel objectif
             </Button>
@@ -144,7 +143,7 @@ export default function Wallet() {
               <Skeleton className="h-16 rounded-xl" />
             ) : goals.length === 0 ? (
               <EmptyState
-                emoji="🎯"
+                icon={<Target className="size-7" />}
                 title="Aucun objectif pour l'instant"
                 description="Un nouveau téléphone ? Un vélo ? Crée un objectif et mets-y ton argent de mission de côté."
                 actions={[{ label: "Créer mon premier objectif", to: "/portefeuille" }]}
@@ -178,8 +177,11 @@ export default function Wallet() {
                     </div>
                     <Progress value={pct} className="mt-3 h-2" />
                     {missing > 0 && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        💡 Il te manque <strong>{euros(missing)}</strong> — à raison de ~15 € par mission : ≈ <strong>{missionsNeeded} mission{missionsNeeded > 1 ? "s" : ""}</strong> (estimation, non garantie).
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
+                        <span>
+                          Il te manque <strong>{euros(missing)}</strong> — à raison de ~15 € par mission : ≈ <strong>{missionsNeeded} mission{missionsNeeded > 1 ? "s" : ""}</strong> (estimation, non garantie).
+                        </span>
                       </p>
                     )}
                   </div>

@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
+import { CategorySlugIcon } from "@/components/icons";
 import { MissionCard } from "@/components/mission-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,8 +15,8 @@ import { eurosFromNumber, formatDateShort, formatDateTime } from "@/lib/format";
 import { APPLICATION_STATUS_META } from "@/lib/format";
 import { Link } from "react-router";
 import {
-  ArrowRight, CalendarCheck, FileText, Plus, ShieldCheck, Sparkles,
-  Target, Trophy, Wallet, Zap, Users, Clock,
+  ArrowRight, CalendarCheck, CircleCheck, FileText, Flame, Plus, ShieldCheck, Sparkles,
+  Target, Trophy, Wallet, Zap, Users, Clock, Rocket, Search, Compass, Repeat, ShieldCheck as ShieldIcon,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -24,13 +25,13 @@ import {
 function ActiveMissionCard({ booking }: { booking: any }) {
   const isTeen = booking.role === "teen";
   const statusLabel =
-    booking.status === "in_progress" ? "🟢 En cours" : booking.status === "confirmed" ? "Confirmée — à venir" : "Paiement en attente";
+    booking.status === "in_progress" ? "En cours" : booking.status === "confirmed" ? "Confirmée — à venir" : "Paiement en attente";
   return (
     <Card className="card-shadow-lg border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 to-transparent">
       <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex items-center gap-4">
-          <span className="grid size-12 place-items-center rounded-2xl bg-emerald-500/15 text-2xl">
-            {booking.mission?.categoryEmoji ?? "🚀"}
+          <span className="grid size-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <CategorySlugIcon slug={booking.mission?.categorySlug} className="size-6" />
           </span>
           <div>
             <p className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
@@ -80,7 +81,7 @@ function TeenHome() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
-          Bonjour {profile?.firstName ?? "toi"} 👋
+          Bonjour {profile?.firstName ?? "toi"}
         </h1>
         <p className="mt-1 text-muted-foreground">Prêt·e à gagner ta prochaine pièce ?</p>
       </div>
@@ -91,8 +92,8 @@ function TeenHome() {
           <CardContent className="p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  🏆 Niveau {stats.level.number} — {stats.level.title}
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Trophy className="size-3.5 text-amber-500" /> Niveau {stats.level.number} — {stats.level.title}
                 </p>
                 <p className="mt-1 font-display text-2xl font-extrabold">{stats.xp} XP</p>
                 {stats.level.next && (
@@ -103,7 +104,7 @@ function TeenHome() {
               </div>
               <div className="flex gap-4 text-center">
                 <div>
-                  <p className="font-display text-xl font-extrabold text-coin dark:text-coin">💰 {eurosFromNumber(stats.totalEarnedCents / 100)}</p>
+                  <p className="flex items-center justify-center gap-1 font-display text-xl font-extrabold text-coin dark:text-coin"><Wallet className="size-4" /> {eurosFromNumber(stats.totalEarnedCents / 100)}</p>
                   <p className="text-[11px] text-muted-foreground">total gagné</p>
                 </div>
                 <div>
@@ -111,7 +112,7 @@ function TeenHome() {
                   <p className="text-[11px] text-muted-foreground">badges</p>
                 </div>
                 <div>
-                  <p className="font-display text-xl font-extrabold">⚡ {stats.quickWins}</p>
+                  <p className="flex items-center justify-center gap-1 font-display text-xl font-extrabold"><Zap className="size-4 text-amber-500" /> {stats.quickWins}</p>
                   <p className="text-[11px] text-muted-foreground">missions rapides</p>
                 </div>
               </div>
@@ -129,7 +130,7 @@ function TeenHome() {
         <Card className="card-shadow border-primary/40 bg-primary/5">
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">🎉 Candidature acceptée !</p>
+              <p className="font-semibold">Candidature acceptée !</p>
               <p className="text-sm text-muted-foreground">« {acceptedApps[0].mission.title} » — la suite t'attend dans tes réservations.</p>
             </div>
             <Button variant="outline" asChild><Link to="/reservations">Voir</Link></Button>
@@ -142,7 +143,7 @@ function TeenHome() {
         <Card className="card-shadow border-border/60">
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">⏳ {pendingApps.length} candidature{pendingApps.length > 1 ? "s" : ""} en attente</p>
+              <p className="flex items-center gap-2 font-semibold"><Clock className="size-4 text-amber-500" /> {pendingApps.length} candidature{pendingApps.length > 1 ? "s" : ""} en attente</p>
               <p className="text-sm text-muted-foreground">Dernière : « {pendingApps[0].mission.title} » — réponse bientôt.</p>
             </div>
             <Button variant="outline" asChild><Link to="/candidatures">Suivre</Link></Button>
@@ -174,7 +175,7 @@ function TeenHome() {
       {quickMissions.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold">⚡ Missions rapides — premier arrivé, premier servi</h2>
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Zap className="size-4 text-amber-500" /> Missions rapides — premier arrivé, premier servi</h2>
             <Button variant="ghost" size="sm" asChild><Link to="/missions">Tout voir</Link></Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -187,13 +188,13 @@ function TeenHome() {
       {isNewUser && (
         <Card className="card-shadow border-brand/30 bg-brand/5">
           <CardContent className="p-5">
-            <p className="font-display text-lg font-bold">👋 Bienvenue sur À LA PIÈCE</p>
+            <p className="font-display text-lg font-bold">Bienvenue sur À LA PIÈCE</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Commence dès maintenant : explore les missions près de toi, candidate, et gagne tes premières pièces.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild><Link to="/missions">🔎 Explorer les missions</Link></Button>
-              <Button variant="outline" asChild><Link to="/portefeuille">🎯 Fixer un objectif</Link></Button>
+              <Button asChild><Link to="/missions"><Search className="size-4" /> Explorer les missions</Link></Button>
+              <Button variant="outline" asChild><Link to="/portefeuille"><Target className="size-4" /> Fixer un objectif</Link></Button>
             </div>
           </CardContent>
         </Card>
@@ -202,7 +203,7 @@ function TeenHome() {
       {/* ✨ Recommended */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">🔥 Missions près de toi</h2>
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Flame className="size-4 text-primary" /> Missions près de toi</h2>
           <Button variant="ghost" size="sm" asChild>
             <Link to="/missions">Tout voir <ArrowRight className="size-4" /></Link>
           </Button>
@@ -213,7 +214,7 @@ function TeenHome() {
           </div>
         ) : recommended.length === 0 ? (
           <EmptyState
-            emoji="🌤️"
+            icon={<Compass className="size-7" />}
             title="Aucune mission disponible pour l'instant"
             description="De nouvelles missions sont publiées chaque jour. Reviens un peu plus tard — ou prépare ton profil pour être le premier à postuler !"
             actions={[{ label: "Compléter mon profil", to: "/profil", variant: "outline" }]}
@@ -232,11 +233,11 @@ function TeenHome() {
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-coin/15"><Target className="size-5 text-amber-600 dark:text-coin" /></span>
               <div>
-                <p className="font-display font-bold">🎯 {firstGoal.label}</p>
+                <p className="font-display font-bold">{firstGoal.label}</p>
                 <p className="text-xs text-muted-foreground">
                   {eurosFromNumber(firstGoal.savedCents / 100)} / {eurosFromNumber(firstGoal.targetCents / 100)}
                   {firstGoal.savedCents < firstGoal.targetCents && (
-                    <> · encore <strong>{eurosFromNumber((firstGoal.targetCents - firstGoal.savedCents) / 100)}</strong> 🚀</>
+                    <> · encore <strong>{eurosFromNumber((firstGoal.targetCents - firstGoal.savedCents) / 100)}</strong></>
                   )}
                 </p>
               </div>
@@ -285,7 +286,7 @@ function AdultHome() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Bonjour {profile?.firstName ?? "toi"} 👋
+            Bonjour {profile?.firstName ?? "toi"}
           </h1>
           <p className="mt-1 text-muted-foreground">De quoi avez-vous besoin aujourd'hui ?</p>
         </div>
@@ -302,7 +303,7 @@ function AdultHome() {
         <Card className="card-shadow border-brand/40 bg-brand/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
             <div className="flex items-center gap-4">
-              <span className="grid size-12 place-items-center rounded-2xl bg-brand/10 text-2xl">👥</span>
+              <span className="grid size-12 place-items-center rounded-2xl bg-brand/10 text-brand"><Users className="size-6" /></span>
               <div>
                 <p className="font-display text-lg font-extrabold">{pendingApps.length} candidat{pendingApps.length > 1 ? "s" : ""} à traiter</p>
                 <p className="text-sm text-muted-foreground">Choisissez la personne qui vous convient le mieux.</p>
@@ -318,7 +319,7 @@ function AdultHome() {
         <Card className="card-shadow border-amber-500/40 bg-amber-500/5">
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="font-semibold">✅ {fullMissions.length} mission{fullMissions.length > 1 ? "s" : ""} avec candidatures complètes</p>
+              <p className="flex items-center gap-2 font-semibold"><CircleCheck className="size-4 text-emerald-500" /> {fullMissions.length} mission{fullMissions.length > 1 ? "s" : ""} avec candidatures complètes</p>
               <p className="text-sm text-muted-foreground">5 candidats vous attendent — comparez et sélectionnez.</p>
             </div>
             <Button variant="outline" asChild><Link to="/candidatures">Comparer</Link></Button>
@@ -347,9 +348,9 @@ function AdultHome() {
       {isNewUser && (
         <Card className="card-shadow border-brand/30 bg-brand/5">
           <CardContent className="p-5">
-            <p className="font-display text-lg font-bold">🚀 Bienvenue sur À LA PIÈCE</p>
+            <p className="font-display text-lg font-bold">Bienvenue sur À LA PIÈCE</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Créez votre première mission en 2 minutes : décrivez votre besoin, choisissez Rapide ⚡ ou Vérifiée 🛡️, publiez.
+              Créez votre première mission en 2 minutes : décrivez votre besoin, choisissez Rapide ou Vérifiée, publiez.
             </p>
             <Button className="mt-3" asChild><Link to="/missions/create"><Plus className="size-4" /> Créer ma première mission</Link></Button>
           </CardContent>
@@ -358,14 +359,14 @@ function AdultHome() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         {[
-          { emoji: "⚡", title: "Mission rapide", desc: "Prise au premier clic par un ado disponible.", to: "/missions/create" },
-          { emoji: "🛡️", title: "Mission vérifiée", desc: "5 candidats, vous comparez, vous choisissez.", to: "/missions/create" },
-          { emoji: "🔄", title: "Récurrente (bientôt)", desc: "Chaque semaine, la même aide de confiance.", to: "/missions/create" },
+          { icon: Zap, tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400", title: "Mission rapide", desc: "Prise au premier clic par un ado disponible.", to: "/missions/create" },
+          { icon: ShieldIcon, tone: "bg-brand/10 text-brand", title: "Mission vérifiée", desc: "5 candidats, vous comparez, vous choisissez.", to: "/missions/create" },
+          { icon: Repeat, tone: "bg-secondary text-secondary-foreground", title: "Récurrente (bientôt)", desc: "Chaque semaine, la même aide de confiance.", to: "/missions/create" },
         ].map((q) => (
           <Link key={q.title} to={q.to} className="group">
             <Card className="card-shadow h-full border-border/60 transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-md">
               <CardContent className="p-4">
-                <p className="text-2xl">{q.emoji}</p>
+                <span className={`grid size-10 place-items-center rounded-xl ${q.tone}`}><q.icon className="size-5" /></span>
                 <p className="mt-1.5 font-display font-bold">{q.title}</p>
                 <p className="text-xs text-muted-foreground">{q.desc}</p>
               </CardContent>
@@ -378,7 +379,7 @@ function AdultHome() {
         <Card className="card-shadow border-amber-500/40 bg-amber-500/5">
           <CardContent className="flex items-start justify-between gap-3 p-4">
             <div className="text-sm">
-              <p className="font-semibold">💳 Paiement sécurisé à activer</p>
+              <p className="flex items-center gap-2 font-semibold"><CircleCheck className="size-4 text-emerald-500" /> Paiement sécurisé à activer</p>
               <p className="mt-1 text-muted-foreground">
                 Vous pouvez publier et recevoir des candidatures dès maintenant. Pour encaisser les réservations,
                 connectez une clé Stripe (onglet Clés API) — les ados sont alors payés après chaque mission confirmée.
@@ -390,14 +391,14 @@ function AdultHome() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">📋 Vos missions ouvertes</h2>
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold"><FileText className="size-4" /> Vos missions ouvertes</h2>
           <Button variant="ghost" size="sm" asChild><Link to="/mes-missions">Gérer</Link></Button>
         </div>
         {!missions ? (
           <div className="grid gap-4 sm:grid-cols-2">{[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}</div>
         ) : openMissions.length === 0 ? (
           <EmptyState
-            emoji="🚀"
+            icon={<Rocket className="size-7" />}
             title="Aucune mission publiée"
             description="Décrivez votre besoin en quelques mots, choisissez le prix — les adolescents du coin candidatent en général très vite."
             actions={[{ label: "Publier une mission", to: "/missions/create" }]}

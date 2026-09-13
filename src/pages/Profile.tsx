@@ -11,13 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AVATAR_CHOICES } from "@/pages/Onboarding";
+import { AVATAR_CHOICES, DataIcon, ICONS } from "@/components/icons";
 import { euros, formatDateShort, formatDateTime, friendlyError } from "@/lib/format";
-import { BadgeCheck, CalendarCheck, Check, FileText, Pencil, Star, Trophy, Wallet } from "lucide-react";
+import { BadgeCheck, CalendarCheck, Check, FileText, Lock, Pencil, Star, Trophy, Wallet, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const AVATARS = AVATAR_CHOICES;
 
 export default function Profile() {
   const { user, profile, age } = useAuth();
@@ -29,7 +28,7 @@ export default function Profile() {
   const [firstName, setFirstName] = useState(profile?.firstName ?? "");
   const [city, setCity] = useState(profile?.city ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
-  const [avatar, setAvatar] = useState(profile?.avatarEmoji ?? "🧑‍🎓");
+  const [avatar, setAvatar] = useState(profile?.avatarIcon ?? "graduation-cap");
   const [saving, setSaving] = useState(false);
 
   const isTeen = user?.accountType === "teen";
@@ -37,8 +36,8 @@ export default function Profile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateProfile({ firstName: firstName.trim(), city: city.trim(), bio: bio.trim(), avatarEmoji: avatar });
-      toast.success("Profil mis à jour ✨");
+      await updateProfile({ firstName: firstName.trim(), city: city.trim(), bio: bio.trim(), avatarIcon: avatar });
+      toast.success("Profil mis à jour");
       setEditOpen(false);
     } catch (error) {
       toast.error(friendlyError(error));
@@ -74,8 +73,8 @@ export default function Profile() {
           <CardContent className="-mt-10 p-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="flex items-end gap-4">
-                <span className="grid size-20 place-items-center rounded-2xl border-4 border-card bg-secondary text-4xl shadow-sm">
-                  {profile.avatarEmoji ?? "👤"}
+                <span className="grid size-20 place-items-center rounded-2xl border-4 border-card bg-secondary text-primary shadow-sm">
+                  <DataIcon name={profile.avatarIcon} className="size-10" />
                 </span>
                 <div className="pb-1">
                   <h1 className="font-display text-2xl font-extrabold tracking-tight">
@@ -141,14 +140,14 @@ export default function Profile() {
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Progression</p>
                       <p className="font-display text-2xl font-extrabold">
-                        🏆 Niveau {stats.level.number} — {stats.level.title}
+                        Niveau {stats.level.number} — {stats.level.title}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {stats.xp} XP{stats.level.next ? ` · encore ${stats.level.next.minXp - stats.xp} XP → ${stats.level.next.title}` : " · niveau maximum 🎉"}
+                        {stats.xp} XP{stats.level.next ? ` · encore ${stats.level.next.minXp - stats.xp} XP → ${stats.level.next.title}` : " · niveau maximum"}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-display text-xl font-extrabold">⚡ {stats.quickWins}</p>
+                      <p className="flex items-center gap-1 font-display text-xl font-extrabold"><Zap className="size-4 text-amber-500" /> {stats.quickWins}</p>
                       <p className="text-[11px] text-muted-foreground">missions rapides gagnées</p>
                     </div>
                   </div>
@@ -185,7 +184,7 @@ export default function Profile() {
                 <CardContent>
                   {stats.badges.length === 0 ? (
                     <p className="py-2 text-center text-sm text-muted-foreground">
-                      Aucun badge pour l'instant — termine ta première mission pour débloquer 🏅 Première mission !
+                      Aucun badge pour l'instant — termine ta première mission pour débloquer « Première mission » !
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -195,14 +194,14 @@ export default function Profile() {
                           title={b.description}
                           className="flex items-center gap-1.5 rounded-full border border-coin/50 bg-coin/10 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-coin"
                         >
-                          <span>{b.emoji}</span> {b.label}
+                          <DataIcon name={b.icon} className="size-3.5" /> {b.label}
                         </span>
                       ))}
                     </div>
                   )}
                   {stats.badges.length > 0 && (
-                    <p className="mt-3 border-t pt-3 text-[11px] text-muted-foreground">
-                      🔒 Prochains badges : {stats.lockedBadges?.slice(0, 3).map((b: any) => `${b.emoji} ${b.label}`).join(" · ")}
+                    <p className="mt-3 flex items-center gap-1.5 border-t pt-3 text-[11px] text-muted-foreground">
+                      <Lock className="size-3" /> Prochains badges : {stats.lockedBadges?.slice(0, 3).map((b: any) => b.label).join(" · ")}
                     </p>
                   )}
                 </CardContent>
@@ -223,15 +222,17 @@ export default function Profile() {
               <Skeleton className="h-16 rounded-xl" />
             ) : reviews.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                Aucun avis pour l'instant. Termine une mission pour recevoir ta première évaluation ⭐
+                Aucun avis pour l'instant. Termine une mission pour recevoir ta première évaluation.
               </p>
             ) : (
               reviews.map((r: any) => (
                 <div key={r._id} className="rounded-xl border p-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold">
-                      {r.authorEmoji} {r.authorName}
-                      <span className="ml-2 text-amber-500">{"⭐".repeat(r.rating)}</span>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold">
+                      <DataIcon name={r.authorIcon} className="size-4 text-muted-foreground" /> {r.authorName}
+                      <span className="ml-2 flex items-center gap-0.5 text-amber-500">
+                        {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-current" />)}
+                      </span>
                     </p>
                     <span className="text-[11px] text-muted-foreground">{formatDateShort(new Date(r.createdAt).toISOString().slice(0, 10))}</span>
                   </div>
@@ -253,15 +254,20 @@ export default function Profile() {
               <div className="space-y-1.5">
                 <Label>Avatar</Label>
                 <div className="flex flex-wrap gap-2">
-                  {AVATARS.map((a) => (
-                    <button
-                      key={a}
-                      onClick={() => setAvatar(a)}
-                      className={`grid size-10 place-items-center rounded-xl border text-xl ${avatar === a ? "border-primary bg-primary/10" : "border-border"}`}
-                    >
-                      {a}
-                    </button>
-                  ))}
+                  {AVATAR_CHOICES.map((a) => {
+                    const Icon = ICONS[a];
+                    return (
+                      <button
+                        key={a}
+                        type="button"
+                        onClick={() => setAvatar(a)}
+                        aria-label={a}
+                        className={`grid size-10 place-items-center rounded-xl border transition-colors ${avatar === a ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                      >
+                        <Icon className="size-5" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="space-y-1.5">

@@ -6,16 +6,17 @@ import type { ReactNode } from "react";
 /**
  * Rich empty states — never a blank canvas.
  * Every empty screen explains why it's empty and proposes a next action.
+ * `icon` accepts a Lucide component (preferred) or any ReactNode.
  */
 export function EmptyState({
-  emoji,
+  icon,
   title,
   description,
   actions,
   className,
   variant = "default",
 }: {
-  emoji: ReactNode;
+  icon: ReactNode;
   title: string;
   description: string;
   actions?: { label: string; to: string; variant?: "default" | "outline" }[];
@@ -30,20 +31,24 @@ export function EmptyState({
         className,
       )}
     >
+      {typeof icon === "string" && (
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 select-none leading-none opacity-[0.12]",
+            variant === "subtle" ? "text-[64px]" : "text-[88px]",
+          )}
+        >
+          {icon}
+        </span>
+      )}
       <span
-        aria-hidden
         className={cn(
-          "pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 select-none leading-none opacity-[0.12]",
-          variant === "subtle" ? "text-[64px]" : "text-[88px]",
+          "relative grid place-items-center rounded-2xl border bg-card text-primary shadow-sm",
+          variant === "subtle" ? "size-12" : "size-16",
         )}
       >
-        {typeof emoji === "string" ? emoji : null}
-      </span>
-      <span className={cn(
-        "relative grid place-items-center rounded-2xl border bg-card shadow-sm",
-        variant === "subtle" ? "size-12 text-2xl" : "size-16 text-3xl",
-      )}>
-        {typeof emoji === "string" ? <span aria-hidden>{emoji}</span> : emoji}
+        {icon}
       </span>
       <h3 className="relative font-display text-lg font-bold">{title}</h3>
       <p className={cn("relative max-w-sm text-sm text-muted-foreground", variant === "subtle" && "text-xs")}>{description}</p>

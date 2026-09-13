@@ -42,7 +42,7 @@ export const triggerSOS = mutation({
         await createNotification(ctx, {
           userId: link.parentUserId,
           type: "safety",
-          title: "🚨 Alerte SOS",
+          title: "Alerte SOS",
           body: `${profile?.firstName ?? "Ton ado"} a déclenché une alerte SOS${
             args.bookingId ? " pendant une mission" : ""
           }.`,
@@ -59,7 +59,7 @@ export const triggerSOS = mutation({
         await createNotification(ctx, {
           userId: otherId,
           type: "safety",
-          title: "🚨 Alerte SOS déclenchée",
+          title: "Alerte SOS déclenchée",
           body: "Une alerte a été levée sur cette mission. Notre équipe est notifiée.",
           link: `/reservations/${args.bookingId}`,
         });
@@ -136,7 +136,7 @@ export const familyView = query({
         status: link.status,
         createdAt: link.createdAt,
         teenName: teenProfile?.firstName ?? "Adolescent",
-        teenEmoji: teenProfile?.avatarEmoji ?? "🧑‍🎓",
+        teenIcon: teenProfile?.avatarIcon ?? null,
       };
       if (link.status === "pending") pendingLinks.push(entry);
       else if (link.status === "approved") teens.push(entry);

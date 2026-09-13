@@ -196,7 +196,7 @@ export const getMission = query({
       publisher: publisher
         ? {
             firstName: publisher.firstName,
-            avatarEmoji: publisher.avatarEmoji,
+            avatarIcon: publisher.avatarIcon,
             city: publisher.city,
             verifiedEmail: publisher.verifiedEmail ?? false,
             verifiedIdentity: publisher.verifiedIdentity ?? false,

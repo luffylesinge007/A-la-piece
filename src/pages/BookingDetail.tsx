@@ -12,8 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { BOOKING_STATUS_META, PAYMENT_STATUS_META, eurosFromNumber, formatDate, formatDuration, friendlyError, formatDateTime } from "@/lib/format";
+import { ProfileAvatar } from "@/components/icons";
 import {
-  AlertTriangle, ArrowLeft, Ban, CheckCircle2, CreditCard, Lock, MapPin, ShieldAlert, Star,
+  AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, CreditCard, FileCheck, Lock, MapPin, Play, ShieldAlert, ShieldCheck, Siren, Star, Star as StarFilled, Hourglass,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
@@ -51,7 +52,7 @@ export default function BookingDetail() {
   const paymentParam = searchParams.get("payment");
   useEffect(() => {
     if (paymentParam === "success") {
-      toast.info("Paiement effectué ✅ La confirmation Stripe arrive dans quelques secondes.");
+      toast.info("Paiement effectué — la confirmation Stripe arrive dans quelques secondes.");
       setSearchParams({}, { replace: true });
     } else if (paymentParam === "cancelled") {
       toast.info("Paiement annulé — tu peux réessayer quand tu veux.");
@@ -133,7 +134,7 @@ export default function BookingDetail() {
         reliability: ratings.reliability,
         comment: comment.trim() || undefined,
       });
-      toast.success("Merci pour ton avis ⭐");
+      toast.success("Merci pour ton avis");
       setReviewOpen(false);
     } catch (error) {
       toast.error(friendlyError(error));
@@ -142,7 +143,6 @@ export default function BookingDetail() {
     }
   };
 
-  const stars = (n: number) => "⭐".repeat(n) + "☆".repeat(5 - n);
 
   return (
     <AppShell>
@@ -173,8 +173,8 @@ export default function BookingDetail() {
                 </p>
               </div>
               <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
-                <span className="grid size-11 place-items-center rounded-full bg-secondary text-2xl">
-                  {booking.counterpart?.avatarEmoji ?? "👤"}
+                <span className="grid size-11 place-items-center rounded-full bg-secondary text-primary">
+                  <ProfileAvatar icon={booking.counterpart?.avatarIcon} name={booking.counterpart?.firstName} iconClassName="size-5" />
                 </span>
                 <div>
                   <p className="text-xs text-muted-foreground">{isTeen ? "Adulte" : "Ado"}</p>
@@ -199,7 +199,7 @@ export default function BookingDetail() {
                               : "border bg-card text-muted-foreground"
                           }`}
                         >
-                          {done ? "✓" : i + 1}
+                          {done ? <Check className="size-4" aria-label="Terminé" /> : i + 1}
                         </span>
                         <span className="mt-1 hidden max-w-16 text-center text-[10px] leading-tight text-muted-foreground sm:block">
                           {label}
@@ -220,7 +220,7 @@ export default function BookingDetail() {
         {!isTeen && booking.status === "pending" && (
           <Card className="card-shadow border-amber-500/40 bg-amber-500/5">
             <CardContent className="p-5">
-              <p className="font-display font-bold">💳 Étape suivante : sécuriser le paiement</p>
+              <p className="font-display font-bold">Étape suivante : sécuriser le paiement</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Le paiement passe par Stripe Checkout. Les fonds sont sécurisés dès la confirmation
                 et versés à l'adolescent après la confirmation de la mission.
@@ -258,7 +258,7 @@ export default function BookingDetail() {
         {isTeen && booking.status === "confirmed" && booking.requiresPin && (
           <Card className="card-shadow border-border/60">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">🔒 Code PIN</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base"><Lock className="size-4" /> Code PIN</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
@@ -274,7 +274,7 @@ export default function BookingDetail() {
                   maxLength={4}
                 />
                 <Button
-                  onClick={() => action("pin", () => checkIn({ bookingId: booking._id, pin }), "Mission commencée 🚀")}
+                  onClick={() => action("pin", () => checkIn({ bookingId: booking._id, pin }), "Mission commencée")}
                   disabled={busy !== null || pin.length !== 4}
                 >
                   Valider et commencer
@@ -290,11 +290,11 @@ export default function BookingDetail() {
             <div className="flex flex-wrap gap-2">
               {isTeen && booking.status === "confirmed" && !booking.requiresPin && (
                 <Button
-                  onClick={() => action("start", () => checkIn({ bookingId: booking._id }), "Mission commencée 🚀")}
+                  onClick={() => action("start", () => checkIn({ bookingId: booking._id }), "Mission commencée")}
                   disabled={busy !== null}
                   size="lg"
                 >
-                  ▶ COMMENCER LA MISSION
+                  <Play className="size-4" /> COMMENCER LA MISSION
                 </Button>
               )}
               {isTeen && booking.status === "in_progress" && (
@@ -303,12 +303,12 @@ export default function BookingDetail() {
                   disabled={busy !== null}
                   size="lg"
                 >
-                  ✅ TERMINER LA MISSION
+                  <Check className="size-4" /> TERMINER LA MISSION
                 </Button>
               )}
               {!isTeen && booking.status === "in_progress" && booking.checkOutAt && (
                 <Button
-                  onClick={() => action("confirm", () => confirmCompletion({ bookingId: booking._id }), "Mission confirmée 🎉")}
+                  onClick={() => action("confirm", () => confirmCompletion({ bookingId: booking._id }), "Mission confirmée")}
                   disabled={busy !== null}
                   size="lg"
                 >
@@ -316,11 +316,11 @@ export default function BookingDetail() {
                 </Button>
               )}
               {!isTeen && booking.status === "in_progress" && !booking.checkOutAt && (
-                <p className="text-sm text-muted-foreground">⏳ En attente du check-out de l'adolescent.</p>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Hourglass className="size-4 text-amber-500" /> En attente du check-out de l'adolescent.</p>
               )}
               {!isTeen && booking.status === "completed" && booking.payment?.status === "held" && (
                 <Button
-                  onClick={() => action("release", () => releasePayment({ bookingId: booking._id }), "Paiement versé à l'ado 💰")}
+                  onClick={() => action("release", () => releasePayment({ bookingId: booking._id }), "Paiement versé à l'ado")}
                   disabled={busy !== null}
                   size="lg"
                 >
@@ -352,7 +352,9 @@ export default function BookingDetail() {
               </p>
             )}
             {booking.mission?.safetyNotes && (
-              <p className="text-sm text-muted-foreground">🛡️ {booking.mission.safetyNotes}</p>
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" /> {booking.mission.safetyNotes}
+              </p>
             )}
             {booking.checkInAt && booking.checkOutAt && (
               <p className="text-xs text-muted-foreground">
@@ -369,7 +371,7 @@ export default function BookingDetail() {
               {reviewState.alreadyReviewed ? (
                 <p className="flex items-center gap-2 text-sm">
                   <Star className="size-4 text-amber-500" />
-                  Ton avis : {stars(reviewState.myRating ?? 0)} — merci !
+                  Ton avis : {reviewState.myRating ?? 0}/5 — merci !
                 </p>
               ) : reviewState.canReview ? (
                 <>
@@ -400,10 +402,10 @@ export default function BookingDetail() {
                                   key={n}
                                   type="button"
                                   onClick={() => setRatings((r) => ({ ...r, [key]: n }))}
-                                  className={`text-xl transition-transform hover:scale-110 ${n <= ratings[key] ? "" : "opacity-30"}`}
+                                  className={`transition-transform hover:scale-110 ${n <= ratings[key] ? "text-amber-500" : "text-muted-foreground/30"}`}
                                   aria-label={`${label} : ${n} étoiles`}
                                 >
-                                  ⭐
+                                  <Star className={`size-6 ${n <= ratings[key] ? "fill-current" : ""}`} />
                                 </button>
                               ))}
                             </div>
@@ -483,7 +485,7 @@ export default function BookingDetail() {
                 }
                 disabled={busy === "sos"}
               >
-                🚨 SOS
+                <Siren className="size-4" /> SOS
               </Button>
             </CardContent>
           </Card>

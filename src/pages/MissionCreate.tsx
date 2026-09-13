@@ -12,9 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CATEGORIES, computeFee, getCategory } from "@/convex/lib/safety";
+import { DataIcon } from "@/components/icons";
 import { eurosFromNumber, formatDuration, friendlyError } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Lightbulb, Loader2, Lock, Sparkles, Zap, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Clock, Lightbulb, Loader2, Lock, MapPin, ShieldAlert, Sparkles, Zap, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -108,8 +109,8 @@ export default function MissionCreate() {
       });
       toast.success(
         missionType === "quick"
-          ? "⚡ Mission rapide publiée ! Le premier ado disponible peut la prendre."
-          : "🛡️ Mission vérifiée publiée ! Les 5 premiers candidats peuvent postuler.",
+          ? "Mission rapide publiée ! Le premier ado disponible peut la prendre."
+          : "Mission vérifiée publiée ! Les 5 premiers candidats peuvent postuler.",
       );
       navigate("/mes-missions");
     } catch (error) {
@@ -134,7 +135,7 @@ export default function MissionCreate() {
     return (
       <AppShell>
         <EmptyState
-          emoji="🔒"
+          icon={<Lock className="size-7" />}
           title="Réservé aux comptes adultes"
           description="Seuls les adultes et organisations publient des missions. En tant qu'ado, ta mission à toi : trouver la bonne et candidater !"
           actions={[{ label: "Explorer les missions", to: "/missions" }]}
@@ -185,7 +186,7 @@ export default function MissionCreate() {
                       c.risk === "high" && "opacity-75",
                     )}
                   >
-                    <span className="text-2xl">{c.emoji}</span>
+                    <span className="text-primary"><DataIcon name={c.icon} className="size-5" /></span>
                     <span className="text-[11px] font-medium leading-tight">{c.label}</span>
                   </button>
                 ))}
@@ -361,7 +362,7 @@ export default function MissionCreate() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Le <strong>premier adolescent disponible</strong> clique sur « Je prends la mission » — il est sélectionné automatiquement.
                   </p>
-                  <p className="mt-2 text-[11px] font-medium text-amber-600 dark:text-amber-400">⚡ Idéal pour un besoin urgent</p>
+                  <p className="mt-2 text-[11px] font-medium text-amber-600 dark:text-amber-400">Idéal pour un besoin urgent</p>
                 </button>
                 <button
                   onClick={() => setMissionType("verified")}
@@ -376,7 +377,7 @@ export default function MissionCreate() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Les <strong>5 premiers intéressés</strong> candidatent, tu compares leurs profils et tu choisis.
                   </p>
-                  <p className="mt-2 text-[11px] font-medium text-brand dark:text-coin">🛡️ Idéal pour choisir la bonne personne</p>
+                  <p className="mt-2 text-[11px] font-medium text-brand dark:text-coin">Idéal pour choisir la bonne personne</p>
                 </button>
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
@@ -405,8 +406,8 @@ export default function MissionCreate() {
                   <Input id="area" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Quartier des Chartrons" />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                📍 La zone est visible par tous — n'écris jamais l'adresse complète ici.
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="size-3" /> La zone est visible par tous — n'écrivez jamais l'adresse complète ici.
               </p>
               <div className="space-y-1.5">
                 <Label htmlFor="address">Adresse exacte (privée)</Label>
@@ -427,7 +428,9 @@ export default function MissionCreate() {
               <div className="rounded-xl border bg-card p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{cat?.emoji ?? "📌"}</span>
+                    <span className="grid size-12 place-items-center rounded-xl bg-secondary text-primary">
+                      <DataIcon name={cat?.icon} className="size-6" />
+                    </span>
                     <div>
                       <p className="font-display font-bold">{title}</p>
                       <Badge variant="secondary">{cat?.label}</Badge>
@@ -437,10 +440,10 @@ export default function MissionCreate() {
                 </div>
                 <p className="mt-3 text-sm text-muted-foreground">{description}</p>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>⏱️ {formatDuration(durationMin as number)}</span>
-                  <span>📅 {date} à {time}</span>
-                  <span>📍 {area}, {city}</span>
-                  {requiresPin && <span>🔒 Code PIN</span>}
+                  <span className="flex items-center gap-1"><Clock className="size-3" /> {formatDuration(durationMin as number)}</span>
+                  <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {date} à {time}</span>
+                  <span className="flex items-center gap-1"><MapPin className="size-3" /> {area}, {city}</span>
+                  {requiresPin && <span className="flex items-center gap-1"><Lock className="size-3" /> Code PIN</span>}
                 </div>
               </div>
               <div className={cn("rounded-xl border p-3 text-sm", missionType === "quick" ? "border-amber-500/40 bg-amber-500/5" : "border-brand/40 bg-brand/5")}>
@@ -450,8 +453,12 @@ export default function MissionCreate() {
                   <p><ShieldCheck className="mr-1 inline size-4 text-brand" /> <strong>Mission vérifiée</strong> — tu choisiras parmi les 5 premiers candidats.</p>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                🛡️ Le niveau d'accès (🟢🟡🔴) est calculé automatiquement à la publication selon l'âge, la catégorie et l'horaire.
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Le niveau d'accès (autorisée / autorisation nécessaire / réservée aux majeurs) est calculé automatiquement
+                  à la publication selon l'âge, la catégorie et l'horaire.
+                </span>
               </p>
               <Button size="lg" className="w-full" onClick={publish} disabled={publishing}>
                 {publishing ? <Loader2 className="size-4 animate-spin" /> : <><Sparkles className="size-4" /> Publier ma mission</>}

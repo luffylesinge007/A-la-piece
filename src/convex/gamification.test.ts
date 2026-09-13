@@ -99,7 +99,7 @@ describe("badges", () => {
     for (const b of BADGES) {
       expect(b.label).toBeTruthy();
       expect(b.description).toBeTruthy();
-      expect(b.emoji).toBeTruthy();
+      expect(b.icon).toBeTruthy();
       expect(["common", "rare", "epic", "legendary"]).toContain(b.rarity);
     }
   });
