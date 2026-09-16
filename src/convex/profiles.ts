@@ -326,6 +326,32 @@ export const approveMissionAsParent = mutation({
   },
 });
 
+/**
+ * Parent/responsible adult registers (or updates) the Stripe connected account
+ * that receives the teen's payout transfers. Only an ID is stored — never any
+ * secret or bank detail.
+ */
+export const setGuardianPayoutAccount = mutation({
+  args: { payoutStripeAccountId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (user.accountType !== "parent") {
+      throw new Error("FORBIDDEN: seul un compte parent/responsable peut définir un compte de virement.");
+    }
+    const accountId = args.payoutStripeAccountId.trim();
+    if (!/^acct_[A-Za-z0-9]{8,}$/.test(accountId)) {
+      throw new Error("Identifiant de compte Stripe invalide (format attendu : acct_…).");
+    }
+    const profile = await getProfile(ctx, user._id);
+    if (!profile) throw new Error("NO_PROFILE: complète d'abord ton profil.");
+    await ctx.db.patch(profile._id, {
+      payoutStripeAccountId: accountId,
+      verifiedPayment: true,
+    });
+    return { ok: true };
+  },
+});
+
 /** Demo/test helper: mark the current account's email as verified (dev mode). */
 export const markDemoVerified = mutation({
   args: {},

@@ -29,7 +29,10 @@ export const MISSION_STATUS = ["published", "assigned", "in_progress", "complete
 export const APPLICATION_STATUS = ["pending", "accepted", "declined", "withdrawn"] as const;
 export const BOOKING_STATUS = ["pending", "confirmed", "in_progress", "completed", "cancelled", "disputed"] as const;
 export const PAYMENT_STATUS = ["requires_payment", "processing", "held", "released", "refunded", "failed"] as const;
-export const TRANSACTION_TYPE = ["mission_payment", "platform_fee", "tip", "withdrawal", "refund"] as const;
+export const TRANSACTION_TYPE = ["mission_payment", "platform_fee", "tip", "withdrawal", "refund", "payout_transfer"] as const;
+/** Teen payout requests — money actually moves via Stripe when configured. */
+export const WITHDRAWAL_STATUS = ["requested", "approved", "paid", "rejected", "failed"] as const;
+const withdrawalStatusValidator = v.union(...WITHDRAWAL_STATUS.map((s) => v.literal(s)));
 export const RISK_LEVEL = ["low", "medium", "high"] as const;
 export const ACCESS_LEVEL = ["allowed", "parental_approval", "adults_only", "forbidden"] as const;
 export const REPORT_STATUS = ["new", "in_progress", "resolved", "rejected"] as const;
@@ -91,6 +94,8 @@ const schema = defineSchema(
       verifiedIdentity: v.optional(v.boolean()),
       verifiedParent: v.optional(v.boolean()),
       verifiedPayment: v.optional(v.boolean()),
+      /** Parent/guardian: Stripe connected account receiving the teen's payouts (acct_…). */
+      payoutStripeAccountId: v.optional(v.string()),
       // moderation
       status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("blocked"))),
     }).index("by_user", ["userId"]),
@@ -196,6 +201,10 @@ const schema = defineSchema(
       payerId: v.id("users"),
       provider: v.literal("stripe"),
       providerRef: v.string(), // Stripe Checkout Session id
+      /** Stripe PaymentIntent id — required for refunds and tips reconciliation. */
+      providerIntentId: v.optional(v.string()),
+      /** "mission" = escrow for a booking, "tip" = optional gratuity. */
+      kind: v.optional(v.union(v.literal("mission"), v.literal("tip"))),
       amountCents: v.number(),
       feeCents: v.number(),
       currency: v.string(),
@@ -206,7 +215,8 @@ const schema = defineSchema(
       releasedAt: v.optional(v.number()),
     })
       .index("by_booking", ["bookingId"])
-      .index("by_provider_ref", ["providerRef"]),
+      .index("by_provider_ref", ["providerRef"])
+      .index("by_intent", ["providerIntentId"]),
 
     wallets: defineTable({
       userId: v.id("users"),
@@ -232,6 +242,28 @@ const schema = defineSchema(
       description: v.string(),
       createdAt: v.number(),
     }).index("by_user", ["userId", "createdAt"]),
+
+    /**
+     * Teen payout request: the teen asks to transfer their available balance to
+     * the bank account of their legal guardian. With Stripe configured the
+     * transfer is a real Stripe payout to the guardian's connected account;
+     * without it the flow stays in "requested/approved" with clear states.
+     */
+    withdrawals: defineTable({
+      userId: v.id("users"), // teen requester
+      guardianId: v.optional(v.id("users")), // approving parent/responsible adult
+      amountCents: v.number(),
+      status: withdrawalStatusValidator,
+      /** Payout destination for the guardian's connected account (Stripe acct_…). */
+      payoutStripeAccountId: v.optional(v.string()),
+      provider: v.optional(v.literal("stripe")),
+      /** Stripe payout/transfer id once the money actually moved. */
+      providerRef: v.optional(v.string()),
+      failureReason: v.optional(v.string()),
+      requestedAt: v.number(),
+      decidedAt: v.optional(v.number()),
+      paidAt: v.optional(v.number()),
+    }).index("by_user", ["userId", "requestedAt"]).index("by_status", ["status"]),
 
     conversations: defineTable({
       missionId: v.optional(v.id("missions")),

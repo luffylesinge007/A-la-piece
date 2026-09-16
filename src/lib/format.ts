@@ -76,6 +76,14 @@ export const PAYMENT_STATUS_META: Record<string, { label: string; className: str
   failed: { label: "Échec", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
 };
 
+export const WITHDRAWAL_STATUS_META: Record<string, { label: string; className: string }> = {
+  requested: { label: "À valider", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  approved: { label: "Validé — virement en cours", className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  paid: { label: "Viré", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  rejected: { label: "Refusé", className: "bg-zinc-500/10 text-zinc-500" },
+  failed: { label: "Échec du virement", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+};
+
 export const APPLICATION_STATUS_META: Record<string, { label: string; className: string }> = {
   pending: { label: "En attente", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   accepted: { label: "Acceptée", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },

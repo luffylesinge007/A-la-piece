@@ -11,29 +11,39 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { euros, friendlyError, formatDateTime } from "@/lib/format";
-import { Lightbulb, Plus, Target, Trash2, Wallet as WalletIcon, CalendarRange, Rocket } from "lucide-react";
+import { euros, friendlyError, formatDateTime, WITHDRAWAL_STATUS_META } from "@/lib/format";
+import { ArrowUpRight, CalendarRange, Check, Landmark, Lightbulb, Plus, Target, Trash2, Wallet as WalletIcon, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function Wallet() {
   const { user } = useAuth();
   const isTeen = user?.accountType === "teen";
+  const isParent = user?.accountType === "parent";
   const stats = useQuery(api.stats.teenStats);
   const wallet = useQuery(api.wallet.getWallet);
   const transactions = useQuery(api.wallet.myTransactions);
   const goals = useQuery(api.wallet.myGoals);
+  const withdrawals = useQuery(api.wallet.myWithdrawals);
+  const guardianPending = useQuery(api.wallet.guardianWithdrawals);
+  const payoutState = useQuery(api.wallet.payoutConfigured);
 
   const addGoal = useMutation(api.wallet.addGoal);
   const allocate = useMutation(api.wallet.allocateToGoal);
   const deleteGoal = useMutation(api.wallet.deleteGoal);
+  const requestWithdrawal = useMutation(api.wallet.requestWithdrawal);
+  const respondWithdrawal = useMutation(api.wallet.respondWithdrawal);
 
   const [goalOpen, setGoalOpen] = useState(false);
   const [goalLabel, setGoalLabel] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
   const [allocOpen, setAllocOpen] = useState<any>(null);
   const [allocAmount, setAllocAmount] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const available = wallet?.availableCents ?? 0;
 
   const handleAddGoal = async () => {
     const target = Math.round(Number(goalTarget) * 100);
@@ -41,23 +51,24 @@ export default function Wallet() {
       toast.error("Donne un nom et un montant valide à ton objectif.");
       return;
     }
-    setBusy(true);
+    setBusy("goal");
     try {
-      await addGoal({ label: goalLabel.trim(), targetCents: target });                      toast.success("Objectif créé");
+      await addGoal({ label: goalLabel.trim(), targetCents: target });
+      toast.success("Objectif créé");
       setGoalOpen(false);
       setGoalLabel("");
       setGoalTarget("");
     } catch (error) {
       toast.error(friendlyError(error));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   const handleAllocate = async () => {
     const amount = Math.round(Number(allocAmount) * 100);
     if (!amount || amount <= 0) return;
-    setBusy(true);
+    setBusy("alloc");
     try {
       await allocate({ goalId: allocOpen._id, amountCents: amount });
       toast.success("Épargne mise de côté");
@@ -66,7 +77,42 @@ export default function Wallet() {
     } catch (error) {
       toast.error(friendlyError(error));
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const amount = Math.round(Number(withdrawAmount) * 100);
+    if (!amount || amount <= 0) {
+      toast.error("Indique un montant valide.");
+      return;
+    }
+    if (amount > available) {
+      toast.error("Le montant dépasse ton solde disponible.");
+      return;
+    }
+    setBusy("withdraw");
+    try {
+      await requestWithdrawal({ amountCents: amount });
+      toast.success("Demande envoyée à ton responsable");
+      setWithdrawOpen(false);
+      setWithdrawAmount("");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleRespond = async (withdrawalId: any, approve: boolean) => {
+    setBusy("guardian");
+    try {
+      await respondWithdrawal({ withdrawalId, approve });
+      toast.success(approve ? "Retrait validé" : "Retrait refusé — montant restitué");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -77,10 +123,48 @@ export default function Wallet() {
           <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"><WalletIcon className="size-6 text-primary" /> Mon portefeuille</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isTeen
-              ? "Ton argent gagné mission après mission. Retrait via ton responsable bientôt disponible."
-              : "Historique de tes paiements et remboursements."}
+              ? "Ton argent gagné mission après mission. Retire-le vers le compte de ton responsable en quelques secondes."
+              : isParent
+                ? "Valide les retraits de ton ado et suis les virements vers ton compte."
+                : "Historique de tes paiements et remboursements."}
           </p>
         </div>
+
+        {/* Guardian: withdrawals awaiting decision */}
+        {isParent && guardianPending && guardianPending.length > 0 && (
+          <Card className="card-shadow border-amber-500/40 bg-amber-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 font-display text-base">
+                <Landmark className="size-4 text-amber-500" /> Retraits à valider
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {guardianPending.map((w: any) => (
+                <div key={w._id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3.5">
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {w.teenName} souhaite virer <strong>{euros(w.amountCents)}</strong>
+                    </p>
+                    <p className="text-xs text-muted-foreground">Demandé le {formatDateTime(w.requestedAt)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={busy === "guardian"} onClick={() => handleRespond(w._id, false)}>
+                      <X className="size-4" /> Refuser
+                    </Button>
+                    <Button size="sm" disabled={busy === "guardian"} onClick={() => handleRespond(w._id, true)}>
+                      <Check className="size-4" /> Valider
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {payoutState && !payoutState.configured && (
+                <p className="text-xs text-muted-foreground">
+                  Le virement bancaire réel s'activera dès que la clé de paiement sera configurée. Les validations restent enregistrées.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Balances */}
         <div className="grid gap-3 sm:grid-cols-3">
@@ -93,7 +177,12 @@ export default function Wallet() {
                   <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <WalletIcon className="size-3.5" /> Solde disponible
                   </p>
-                  <p className="mt-1 font-display text-3xl font-extrabold">{euros(wallet.availableCents)}</p>
+                  <p className="mt-1 font-display text-3xl font-extrabold">{euros(available)}</p>
+                  {isTeen && available > 0 && (
+                    <Button size="sm" className="mt-3 w-full" onClick={() => setWithdrawOpen(true)}>
+                      <ArrowUpRight className="size-4" /> Retirer vers mon responsable
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               <Card className="card-shadow border-border/60">
@@ -112,7 +201,9 @@ export default function Wallet() {
               </Card>
             </>
           )}
-        </div>        {/* Gains this week/month (teens) */}
+        </div>
+
+        {/* Gains this week/month (teens) */}
         {isTeen && stats && (
           <div className="grid grid-cols-2 gap-3">
             <Card className="card-shadow border-coin/40 bg-coin/5">
@@ -128,6 +219,32 @@ export default function Wallet() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Withdrawal history (teens) */}
+        {isTeen && withdrawals && withdrawals.length > 0 && (
+          <Card className="card-shadow border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 font-display text-base"><Landmark className="size-4 text-primary" /> Mes retraits</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {withdrawals.map((w: any) => {
+                const meta = WITHDRAWAL_STATUS_META[w.status];
+                return (
+                  <div key={w._id} className="flex items-center justify-between gap-3 rounded-xl border p-3.5">
+                    <div>
+                      <p className="text-sm font-semibold">{euros(w.amountCents)}</p>
+                      <p className="text-xs text-muted-foreground">Demandé le {formatDateTime(w.requestedAt)}</p>
+                      {w.status === "failed" && w.failureReason && (
+                        <p className="mt-0.5 text-xs text-destructive">{w.failureReason}</p>
+                      )}
+                    </div>
+                    <Badge variant="outline" className={meta?.className}>{meta?.label ?? w.status}</Badge>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
         )}
 
         {/* Savings goals */}
@@ -167,7 +284,7 @@ export default function Wallet() {
                         </div>
                       </div>
                       <div className="flex gap-1.5">
-                        <Button size="sm" variant="outline" onClick={() => setAllocOpen(g)} disabled={(wallet?.availableCents ?? 0) === 0}>
+                        <Button size="sm" variant="outline" onClick={() => setAllocOpen(g)} disabled={available === 0}>
                           Alimenter
                         </Button>
                         <Button size="icon" variant="ghost" aria-label="Supprimer l'objectif" onClick={() => deleteGoal({ goalId: g._id }).catch((e) => toast.error(friendlyError(e)))}>
@@ -212,10 +329,10 @@ export default function Wallet() {
                   </div>
                   <div className="text-right">
                     <p className={`font-display font-bold ${t.amountCents >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
-                      {t.amountCents >= 0 ? "+" : ""}{euros(t.amountCents)}
+                      {t.amountCents > 0 ? "+" : ""}{t.amountCents === 0 ? "—" : euros(t.amountCents)}
                     </p>
                     <Badge variant="secondary" className="text-[10px]">
-                      {t.status === "completed" ? "Terminé" : t.status === "pending" ? "En attente" : t.status}
+                      {t.status === "completed" ? "Terminé" : t.status === "pending" ? "En attente" : t.status === "refunded" ? "Restitué" : t.status === "failed" ? "Échec" : t.status}
                     </Badge>
                   </div>
                 </div>
@@ -223,6 +340,51 @@ export default function Wallet() {
             )}
           </CardContent>
         </Card>
+
+        {/* Withdrawal dialog */}
+        <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Retirer mon argent</DialogTitle>
+              <DialogDescription>
+                Le montant est viré au compte du responsable légal qui t'a validé. Ton responsable reçoit une demande à confirmer.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="withdrawAmount">Montant (€) — disponible : {euros(available)}</Label>
+                <Input
+                  id="withdrawAmount"
+                  type="number"
+                  min={1}
+                  max={available / 100}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="20"
+                />
+              </div>
+              <div className="flex gap-2">
+                {[10, 20, 50].filter((v) => v * 100 <= available).map((v) => (
+                  <Button key={v} size="sm" variant="outline" type="button" onClick={() => setWithdrawAmount(String(v))}>
+                    {v} €
+                  </Button>
+                ))}
+                {available > 0 && (
+                  <Button size="sm" variant="ghost" type="button" onClick={() => setWithdrawAmount(String(available / 100))}>
+                    Tout
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Le montant est réservé dès la demande. Si le virement échoue ou si le responsable refuse, il est automatiquement remis dans ton solde.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setWithdrawOpen(false)}>Annuler</Button>
+              <Button onClick={handleWithdraw} disabled={busy !== null || !withdrawAmount}>Envoyer la demande</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Goal dialog */}
         <Dialog open={goalOpen} onOpenChange={setGoalOpen}>
@@ -243,7 +405,7 @@ export default function Wallet() {
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setGoalOpen(false)}>Annuler</Button>
-              <Button onClick={handleAddGoal} disabled={busy}>Créer l'objectif</Button>
+              <Button onClick={handleAddGoal} disabled={busy !== null}>Créer l'objectif</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -254,7 +416,7 @@ export default function Wallet() {
             <DialogHeader>
               <DialogTitle>Épargner pour « {allocOpen?.label} »</DialogTitle>
               <DialogDescription>
-                Solde disponible : {euros(wallet?.availableCents ?? 0)}
+                Solde disponible : {euros(available)}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-1.5">
@@ -263,7 +425,7 @@ export default function Wallet() {
                 id="allocAmount"
                 type="number"
                 min={1}
-                max={(wallet?.availableCents ?? 0) / 100}
+                max={available / 100}
                 value={allocAmount}
                 onChange={(e) => setAllocAmount(e.target.value)}
                 placeholder="20"
@@ -271,7 +433,7 @@ export default function Wallet() {
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setAllocOpen(null)}>Annuler</Button>
-              <Button onClick={handleAllocate} disabled={busy}>Épargner</Button>
+              <Button onClick={handleAllocate} disabled={busy !== null}>Épargner</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

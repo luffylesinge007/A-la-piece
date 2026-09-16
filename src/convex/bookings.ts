@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 import {
   createNotification,
   getOrCreateConversation,
@@ -298,16 +299,9 @@ export const cancel = mutation({
     if (b.paymentId) {
       const payment = await ctx.db.get(b.paymentId);
       if (payment && payment.status === "held") {
-        await ctx.db.patch(payment._id, { status: "refunded" });
-        await ctx.db.insert("transactions", {
-          userId: b.adultId,
-          type: "refund",
-          bookingId: b._id,
-          amountCents: payment.amountCents,
-          status: "completed",
-          description: "Remboursement — réservation annulée",
-          createdAt: now,
-        });
+        // The real Stripe refund is scheduled from the payments module
+        // (executeRefund) — the ledger is finalized there.
+        await ctx.runMutation(api.payments.refundPayment, { bookingId: b._id });
       }
     }
     const conversationId = await getOrCreateConversation(ctx, b.adultId, b.teenId, b.missionId, b._id);

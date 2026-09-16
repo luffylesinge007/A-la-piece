@@ -47,12 +47,16 @@ export default function BookingDetail() {
   const triggerSOS = useMutation(api.safety.triggerSOS);
   const submitReview = useMutation(api.reviews.submitReview);
   const createCheckoutSession = useAction(api.payments.createCheckoutSession);
+  const createTipCheckoutSession = useAction(api.payments.createTipCheckoutSession);
 
   // Toast when returning from Stripe Checkout
   const paymentParam = searchParams.get("payment");
   useEffect(() => {
     if (paymentParam === "success") {
       toast.info("Paiement effectué — la confirmation Stripe arrive dans quelques secondes.");
+      setSearchParams({}, { replace: true });
+    } else if (paymentParam === "tip_success") {
+      toast.info("Pourboire envoyé — merci ! La confirmation Stripe arrive dans quelques secondes.");
       setSearchParams({}, { replace: true });
     } else if (paymentParam === "cancelled") {
       toast.info("Paiement annulé — tu peux réessayer quand tu veux.");
@@ -114,6 +118,27 @@ export default function BookingDetail() {
     try {
       await fn();
       toast.success(successMessage);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleTip = async (amountEuros: number) => {
+    setBusy("tip");
+    try {
+      const result: any = await createTipCheckoutSession({
+        bookingId: booking._id,
+        amountEuros,
+        origin: window.location.origin,
+      });
+      if (result?.checkoutUrl) {
+        toast.info("Redirection vers Stripe…");
+        window.location.assign(result.checkoutUrl);
+      } else {
+        toast.error("Impossible de créer le pourboire.");
+      }
     } catch (error) {
       toast.error(friendlyError(error));
     } finally {
@@ -363,6 +388,43 @@ export default function BookingDetail() {
             )}
           </CardContent>
         </Card>
+
+        {/* Tip section — either side can thank the other once the mission is done */}
+        {booking.status === "completed" && booking.payment?.status === "released" && (
+          <Card className="card-shadow border-coin/40 bg-coin/5">
+            <CardContent className="p-5">
+              <p className="font-display font-bold">Vous souhaitez remercier {booking.counterpart?.firstName} ?</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Un pourboire optionnel, envoyé via un paiement sécurisé.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[2, 5, 10].map((amount) => (
+                  <Button
+                    key={amount}
+                    variant="outline"
+                    disabled={busy === "tip"}
+                    onClick={() => handleTip(amount)}
+                  >
+                    {amount} €
+                  </Button>
+                ))}
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  placeholder="Autre"
+                  className="w-24"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const v = Number((e.target as HTMLInputElement).value);
+                      if (v >= 1 && v <= 50) handleTip(v);
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Review section */}
         {booking.status === "completed" && reviewState && (
