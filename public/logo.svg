@@ -1,28 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#E87BA3"/>
-      <stop offset="0.55" stop-color="#DE6690"/>
-      <stop offset="1" stop-color="#C04A76"/>
-    </linearGradient>
-    <linearGradient id="coin" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FDE18E"/>
-      <stop offset="1" stop-color="#F9D976"/>
+    <linearGradient id="alp-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DE4258"/>
+      <stop offset="1" stop-color="#C72147"/>
     </linearGradient>
   </defs>
-  <!-- Rounded brand tile -->
-  <rect x="12" y="12" width="488" height="488" rx="118" fill="url(#tile)"/>
+  <!-- Brand tile -->
+  <rect x="8" y="8" width="496" height="496" rx="118" fill="url(#alp-tile)"/>
   <!-- Soft sheen -->
-  <ellipse cx="256" cy="120" rx="230" ry="120" fill="#FFFFFF" opacity="0.08"/>
-  <!-- Coin -->
-  <circle cx="256" cy="266" r="148" fill="url(#coin)"/>
-  <circle cx="256" cy="266" r="148" fill="none" stroke="#EBC25B" stroke-width="14"/>
-  <circle cx="256" cy="266" r="118" fill="none" stroke="#F3D070" stroke-width="6" opacity="0.9"/>
-  <!-- Coin star -->
-  <polygon points="351,225 294,268 315,337 256,296 197,337 218,268 161,225 232,224 256,156 280,224"
-    fill="#C70039"/>
-  <!-- Sparkles -->
-  <circle cx="122" cy="150" r="12" fill="#FFFFFF" opacity="0.85"/>
-  <circle cx="398" cy="404" r="16" fill="#FFFFFF" opacity="0.7"/>
-  <path d="M416 96 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8 z" fill="#F9D976"/>
+  <ellipse cx="256" cy="112" rx="222" ry="112" fill="#FFFFFF" opacity="0.05"/>
+
+  <!-- Coin (outlined) -->
+  <circle cx="262" cy="206" r="92" fill="none" stroke="#FFFFFF" stroke-width="14"/>
+  <!-- Star (outlined) -->
+  <path d="M262 140 L277 187 L326 188 L286 218 L301 265 L262 236 L223 265 L238 218 L198 188 L247 187 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linejoin="round"/>
+
+  <!-- Sleeve cuff -->
+  <rect x="50" y="318" width="98" height="134" rx="26" fill="#FFFFFF" transform="rotate(-12 99 385)"/>
+
+  <!-- Open hand cradling the coin -->
+  <path d="M138 342
+           C176 330 204 342 228 360
+           C250 376 272 382 298 376
+           C332 368 358 348 372 330
+           A30 30 0 0 1 414 352
+           C422 374 418 398 402 416
+           C378 442 336 458 288 460
+           C232 462 178 452 146 432
+           C138 427 134 418 136 406
+           Z"
+        fill="#FFFFFF"/>
+  <!-- Thumb crease -->
+  <path d="M234 368 C264 398 312 404 350 386"
+        fill="none" stroke="#C72147" stroke-width="14" stroke-linecap="round"/>
 </svg>
