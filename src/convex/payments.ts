@@ -1,8 +1,15 @@
 import { v } from "convex/values";
 import Stripe from "stripe";
-import { action, mutation, query } from "./_generated/server";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import {
   createNotification,
   creditWallet,
@@ -23,8 +30,11 @@ export const isConfigured = query({
   },
 });
 
-/** Internal: persist the payment record created by the checkout action. */
-export const recordPayment = mutation({
+/**
+ * Internal: persist the payment record created by the checkout action.
+ * `internalMutation` — the platform forbids direct client calls.
+ */
+export const recordPayment = internalMutation({
   args: {
     bookingId: v.id("bookings"),
     providerRef: v.string(),
@@ -34,15 +44,13 @@ export const recordPayment = mutation({
     kind: v.optional(v.union(v.literal("mission"), v.literal("tip"))),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthUserId(ctx);
-    if (!user) throw new Error("UNAUTHENTICATED");
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) throw new Error("FORBIDDEN");
-    // Mission payments are paid by the adult; tips may be sent by either side.
-    if (args.kind !== "tip" && booking.adultId !== user) throw new Error("FORBIDDEN");
+    const actorId = await getAuthUserId(ctx);
     const paymentId = await ctx.db.insert("payments", {
       bookingId: args.bookingId,
-      payerId: user,
+      // Mission payments are paid by the adult; tips by the authenticated side.
+      payerId: actorId ?? booking.adultId,
       provider: "stripe",
       providerRef: args.providerRef,
       amountCents: args.amountCents,
@@ -60,7 +68,7 @@ export const recordPayment = mutation({
 });
 
 /** Internal: webhook confirmed the money — hold it, confirm the booking. */
-export const markHeld = mutation({
+export const markHeld = internalMutation({
   args: {
     bookingId: v.id("bookings"),
     providerRef: v.string(),
@@ -162,7 +170,9 @@ export const createCheckoutSession = action({
     const user = await ctx.runQuery(api.users.currentUser);
     if (!user) throw new Error("UNAUTHENTICATED: connecte-toi pour payer.");
     if (!isAdultAccount(user)) throw new Error("FORBIDDEN: seul l'adulte qui réserve paie.");
-    const booking = await ctx.runQuery(api.bookings.getForPayer, { bookingId: args.bookingId });
+    const booking = await ctx.runQuery(internal.bookings.getForPayer, {
+      bookingId: args.bookingId,
+    });
     if (!booking) throw new Error("NOT_FOUND: réservation introuvable.");
     if (booking.adultId !== user._id) throw new Error("FORBIDDEN");
     if (booking.paymentStatus === "held" || booking.paymentStatus === "released") {
@@ -202,7 +212,7 @@ export const createCheckoutSession = action({
       cancel_url: `${origin}/reservations/${args.bookingId}?payment=cancelled`,
     });
     // Persist the payment record as "processing" until the webhook confirms it.
-    const paymentId: string = await ctx.runMutation(api.payments.recordPayment, {
+    const paymentId: string = await ctx.runMutation(internal.payments.recordPayment, {
       bookingId: args.bookingId,
       providerRef: session.id,
       amountCents,
@@ -270,7 +280,7 @@ export const createTipCheckoutSession = action({
       cancel_url: `${origin}/reservations/${args.bookingId}?payment=cancelled`,
     });
 
-    await ctx.runMutation(api.payments.recordPayment, {
+    await ctx.runMutation(internal.payments.recordPayment, {
       bookingId: args.bookingId,
       providerRef: session.id,
       amountCents,
@@ -329,7 +339,7 @@ export const handleStripeWebhook = action({
         // Keep going without the intent id; refunds fall back to session lookup.
       }
 
-      await ctx.runMutation(api.payments.markHeld, {
+      await ctx.runMutation(internal.payments.markHeld, {
         bookingId: bookingId as any,
         providerRef: session.id,
         providerIntentId: intentId,
@@ -409,7 +419,7 @@ export const refundPayment = mutation({
       if (payment && payment.status === "held") {
         // Schedule the real Stripe refund as an action (network I/O is not
         // allowed inside mutations).
-        await ctx.scheduler.runAfter(0, api.payments.executeRefund, {
+        await ctx.scheduler.runAfter(0, internal.payments.executeRefund, {
           paymentId: payment._id,
         });
       }
@@ -417,8 +427,8 @@ export const refundPayment = mutation({
   },
 });
 
-/** Internal read for the refund action. */
-export const getPaymentInternal = query({
+/** Internal read for the refund action — not exposed to clients. */
+export const getPaymentInternal = internalQuery({
   args: { paymentId: v.id("payments") },
   handler: async (ctx, args) => {
     return ctx.db.get(args.paymentId);
@@ -426,10 +436,10 @@ export const getPaymentInternal = query({
 });
 
 /** Issue the real Stripe refund; on failure mark the payment failed so admins see it. */
-export const executeRefund = action({
+export const executeRefund = internalAction({
   args: { paymentId: v.id("payments") },
   handler: async (ctx, args) => {
-    const payment = await ctx.runQuery(api.payments.getPaymentInternal, {
+    const payment = await ctx.runQuery(internal.payments.getPaymentInternal, {
       paymentId: args.paymentId,
     });
     if (!payment || payment.status !== "held") return { refunded: false as const };
@@ -437,7 +447,7 @@ export const executeRefund = action({
     if (!secretKey) {
       // Ledger-only mode (no Stripe on this environment): record the refund
       // locally so the adult's history stays truthful.
-      await ctx.runMutation(api.payments.markRefunded, {
+      await ctx.runMutation(internal.payments.markRefunded, {
         paymentId: args.paymentId,
         providerRefundId: undefined,
       });
@@ -457,13 +467,13 @@ export const executeRefund = action({
         payment_intent: intentId,
         metadata: { bookingId: String(payment.bookingId), source: "alp-cancellation" },
       });
-      await ctx.runMutation(api.payments.markRefunded, {
+      await ctx.runMutation(internal.payments.markRefunded, {
         paymentId: args.paymentId,
         providerRefundId: refund.id,
       });
       return { refunded: true as const };
     } catch (error) {
-      await ctx.runMutation(api.payments.markRefundFailed, {
+      await ctx.runMutation(internal.payments.markRefundFailed, {
         paymentId: args.paymentId,
         reason: error instanceof Error ? error.message : "Erreur Stripe inconnue.",
       });
@@ -473,7 +483,7 @@ export const executeRefund = action({
 });
 
 /** Refund accepted by Stripe: finalize the ledger. */
-export const markRefunded = mutation({
+export const markRefunded = internalMutation({
   args: { paymentId: v.id("payments"), providerRefundId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const payment = await ctx.db.get(args.paymentId);
@@ -505,7 +515,7 @@ export const markRefunded = mutation({
 });
 
 /** Stripe refused the refund — keep the funds visible as "held" + alert. */
-export const markRefundFailed = mutation({
+export const markRefundFailed = internalMutation({
   args: { paymentId: v.id("payments"), reason: v.string() },
   handler: async (ctx, args) => {
     const payment = await ctx.db.get(args.paymentId);

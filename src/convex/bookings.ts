@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internalQuery, mutation, query } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import {
   createNotification,
   getOrCreateConversation,
@@ -8,6 +8,7 @@ import {
   insertSystemMessage,
   requireUser,
 } from "./lib/helpers";
+import { requireActiveAccount } from "./lib/security";
 
 function statusFlowMessage(status: string): string | null {
   switch (status) {
@@ -53,7 +54,11 @@ export const listMine = query({
         paymentStatus: payment?.status ?? null,
         checkInAt: b.checkInAt,
         checkOutAt: b.checkOutAt,
-        pinCode: b.teenId === user._id && b.status === "confirmed" ? b.pinCode : undefined,
+        // Security: the PIN is the ADULT's secret, shared verbally at check-in.
+        // Never sent to the teen's client.
+        pinCode: b.adultId === user._id && (b.status === "confirmed" || b.status === "in_progress")
+          ? b.pinCode
+          : undefined,
         mission: mission
           ? {
               _id: mission._id,
@@ -88,10 +93,9 @@ export const getBooking = query({
     const isTeen = b.teenId === user._id;
     const counterpart = await getProfile(ctx, isTeen ? b.adultId : b.teenId);
 
-    // PIN: the teen sees it only when the mission is about to start;
-    // the adult sees it to give it verbally at check-in.
-    const pinVisible =
-      (b.status === "confirmed" || b.status === "in_progress") && (b.pinCode !== undefined);
+    // PIN: the ADULT's secret. It is shared verbally by the adult at check-in
+    // so the teen can prove they are on site. Never displayed to the teen.
+    const pinVisible = !isTeen && (b.status === "confirmed" || b.status === "in_progress") && b.pinCode !== undefined;
 
     return {
       _id: b._id,
@@ -135,8 +139,11 @@ export const getBooking = query({
   },
 });
 
-/** Internal read used by the payments action. */
-export const getForPayer = query({
+/**
+ * Internal read used by the checkout action (payments module).
+ * `internalQuery` — the platform forbids direct client calls.
+ */
+export const getForPayer = internalQuery({
   args: { bookingId: v.id("bookings") },
   handler: async (ctx, args) => {
     const b = await ctx.db.get(args.bookingId);
@@ -304,6 +311,7 @@ export const cancel = mutation({
         await ctx.runMutation(api.payments.refundPayment, { bookingId: b._id });
       }
     }
+    void internal;
     const conversationId = await getOrCreateConversation(ctx, b.adultId, b.teenId, b.missionId, b._id);
     await insertSystemMessage(ctx, conversationId, "La réservation a été annulée.");
     for (const uid of [b.adultId, b.teenId]) {

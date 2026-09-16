@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import {
   createNotification,
   getProfile,
@@ -7,6 +7,8 @@ import {
   insertSystemMessage,
   requireUser,
 } from "./lib/helpers";
+import { classifyMessage } from "./lib/fraud";
+import { consumeRateLimit, logSecurityEvent, requireActiveAccount, SECURITY_EVENTS, sanitizeText } from "./lib/security";
 
 /** Conversations for the current user with counterpart + mission context. */
 export const listConversations = query({
@@ -40,7 +42,7 @@ export const listConversations = query({
   },
 });
 
-/** Messages of a conversation (participants only). */
+/** Messages of a conversation (participants only, capped). */
 export const listMessages = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
@@ -52,35 +54,53 @@ export const listMessages = query({
     return ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
-      .order("asc")
-      .collect();
+      .order("desc")
+      .take(200)
+      .then((rows) => rows.reverse()); // chronological order, bounded size
   },
 });
 
-/** Send a message; counterpart gets a notification. */
+/** Send a message; counterpart gets a notification. Security-classified server-side. */
 export const sendMessage = mutation({
   args: { conversationId: v.id("conversations"), body: v.string() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    await requireActiveAccount(ctx, user);
     const conv = await ctx.db.get(args.conversationId);
     if (!conv || !conv.participantIds.includes(user._id)) throw new Error("FORBIDDEN");
-    const body = args.body.trim();
-    if (!body) throw new Error("Le message est vide.");
-    if (body.length > 2000) throw new Error("Message trop long (2000 caractères max).");
 
-    // === Basic content filter ===
-    const forbiddenPatterns = [
-      { re: /\b(?:07|06)\d[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}\b/, label: "numéro de téléphone" },
-      { re: /\b[\w.+-]+@[\w-]+\.[\w.]+\b/, label: "adresse email" },
-      { re: /\b(?:iban|rib|cb)\b/i, label: "coordonnée bancaire" },
-      { re: /\b(?:tu\s+peux\s+venir\s+chez\s+moi|mon\s+adresse\s+est)\b/i, label: "adresse personnelle" },
-    ];
-    for (const { re, label } of forbiddenPatterns) {
-      if (re.test(body)) {
-        throw new Error(
-          `SÉCURITÉ: partager un ${label} est bloqué pour te protéger. Passe par l'adresse fournie dans la mission.`,
-        );
-      }
+    // Anti-spam / anti-bot: hard server-side rate limit.
+    const rl = await consumeRateLimit(ctx, "message", user._id);
+    if (!rl.ok) {
+      throw new Error("Trop de messages envoyés — fais une pause, réessaie dans quelques minutes.");
+    }
+
+    const body = sanitizeText(args.body, 2000);
+    if (!body) throw new Error("Le message est vide.");
+
+    // === Content security classifier (phishing, money, codes, grooming…) ===
+    const cls = classifyMessage(body);
+    const BLOCKED = new Set([
+      "bank_details",
+      "password_or_code",
+      "phone_number",
+      "email_address",
+      "home_address",
+      "private_photos",
+      "gross_or_sexual",
+      "harassment",
+    ]);
+    const blocked = cls.flags.some((f) => BLOCKED.has(f));
+    if (blocked) {
+      await logSecurityEvent(ctx, {
+        type: SECURITY_EVENTS.MESSAGE_FLAGGED,
+        severity: "warning",
+        userId: user._id,
+        targetType: "conversation",
+        targetId: args.conversationId,
+        details: cls.flags.join(","),
+      });
+      throw new Error(cls.warning ?? "Message bloqué pour ta sécurité.");
     }
 
     const now = Date.now();
@@ -89,6 +109,7 @@ export const sendMessage = mutation({
       senderId: user._id,
       body,
       type: "user",
+      flags: cls.flags.length ? cls.flags : undefined,
       createdAt: now,
     });
     await ctx.db.patch(args.conversationId, {
@@ -107,6 +128,10 @@ export const sendMessage = mutation({
         link: `/messages/${args.conversationId}`,
       });
     }
+
+    // Warn-only flags (external links, off-platform payment): stored so the
+    // UI can show a caution banner next to the message.
+    return { warning: cls.warning };
   },
 });
 
@@ -124,8 +149,8 @@ export const startConversation = mutation({
   },
 });
 
-/** System helper: post an automatic mission message. */
-export const postSystemMessage = mutation({
+/** System helper (server-only): post an automatic mission message. */
+export const postSystemMessage = internalMutation({
   args: { conversationId: v.id("conversations"), body: v.string() },
   handler: async (ctx, args) => {
     await insertSystemMessage(ctx, args.conversationId, args.body);

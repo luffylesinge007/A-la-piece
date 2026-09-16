@@ -8,6 +8,14 @@ import {
   requireUser,
 } from "./lib/helpers";
 import { computeAge } from "./lib/safety";
+import {
+  consumeRateLimit,
+  countActiveSessions,
+  logSecurityEvent,
+  revokeAllSessions,
+  sanitizeText,
+  SECURITY_EVENTS,
+} from "./lib/security";
 
 /** Full profile for the current user (profile + settings + derived data). */
 export const myProfile = query({
@@ -95,10 +103,10 @@ export const completeOnboarding = mutation({
     const profileId = await ctx.db.insert("profiles", {
       userId: user._id,
       accountType: args.accountType,
-      firstName: args.firstName.trim(),
-      lastName: args.lastName?.trim(),
-      city: args.city?.trim(),
-      bio: args.bio?.trim(),
+      firstName: sanitizeText(args.firstName, 40),
+      lastName: args.lastName ? sanitizeText(args.lastName, 40) : undefined,
+      city: args.city ? sanitizeText(args.city, 60) : undefined,
+      bio: args.bio ? sanitizeText(args.bio, 500) : undefined,
       avatarIcon: args.avatarIcon ?? (args.accountType === "teen" ? "graduation-cap" : "user"),
       birthDate: args.accountType === "teen" ? args.birthDate : undefined,
       interests: args.interests,
@@ -143,7 +151,7 @@ export const completeOnboarding = mutation({
   },
 });
 
-/** Update editable profile fields. */
+/** Update editable profile fields (strictly sanitized). */
 export const updateProfile = mutation({
   args: {
     firstName: v.optional(v.string()),
@@ -160,8 +168,19 @@ export const updateProfile = mutation({
     const profile = await getProfile(ctx, user._id);
     if (!profile) throw new Error("NO_PROFILE");
     const patch: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(args)) {
-      if (val !== undefined) patch[k] = val;
+    if (args.firstName !== undefined) patch.firstName = sanitizeText(args.firstName, 40);
+    if (args.lastName !== undefined) patch.lastName = sanitizeText(args.lastName, 40);
+    if (args.city !== undefined) patch.city = sanitizeText(args.city, 60);
+    if (args.bio !== undefined) patch.bio = sanitizeText(args.bio, 500);
+    if (args.avatarIcon !== undefined) patch.avatarIcon = sanitizeText(args.avatarIcon, 40);
+    if (args.interests !== undefined) {
+      patch.interests = args.interests.slice(0, 12).map((s) => sanitizeText(s, 30));
+    }
+    if (args.skills !== undefined) {
+      patch.skills = args.skills.slice(0, 12).map((s) => sanitizeText(s, 30));
+    }
+    if (args.availability !== undefined) {
+      patch.availability = args.availability.slice(0, 14).map((s) => sanitizeText(s, 20));
     }
     await ctx.db.patch(profile._id, patch);
   },
@@ -361,5 +380,133 @@ export const markDemoVerified = mutation({
     if (profile) {
       await ctx.db.patch(profile._id, { verifiedEmail: true, verifiedPhone: true });
     }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Account security & RGPD
+// ---------------------------------------------------------------------------
+
+/** How many active sessions does the current account have? */
+export const sessionCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    return { sessions: await countActiveSessions(ctx, user._id) };
+  },
+});
+
+/** "Sign out everywhere": revokes every active session server-side. */
+export const revokeAllMySessions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const count = await revokeAllSessions(ctx, user._id);
+    await logSecurityEvent(ctx, {
+      type: SECURITY_EVENTS.LOGOUT_ALL,
+      severity: "info",
+      userId: user._id,
+      details: `${count} session(s) révoquée(s) par l'utilisateur.`,
+    });
+    return { revoked: count };
+  },
+});
+
+/**
+ * RGPD — export all data owned by the current user, in one structured object.
+ * Only the owner's own data is ever returned (IDOR-safe by construction).
+ */
+export const exportMyData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const rl = await consumeRateLimit(ctx, "gdpr", user._id);
+    if (!rl.ok) {
+      throw new Error("Limite d'export atteinte — réessaie demain.");
+    }
+    void rl;
+    const uid = user._id;
+    const [profile, settings, wallets, goals, transactions, withdrawals, apps, bookings, reviews, notifs, safetyEvs] =
+      await Promise.all([
+        getProfile(ctx, uid),
+        getSettings(ctx, uid),
+        ctx.db.query("wallets").withIndex("by_user", (q) => q.eq("userId", uid)).collect(),
+        ctx.db.query("savingsGoals").withIndex("by_user", (q) => q.eq("userId", uid)).collect(),
+        ctx.db.query("transactions").withIndex("by_user", (q) => q.eq("userId", uid)).collect(),
+        ctx.db.query("withdrawals").withIndex("by_user", (q) => q.eq("userId", uid)).collect(),
+        ctx.db.query("applications").withIndex("by_teen", (q) => q.eq("teenId", uid)).collect(),
+        ctx.db.query("bookings").withIndex("by_teen", (q) => q.eq("teenId", uid)).collect(),
+        ctx.db.query("reviews").withIndex("by_target", (q) => q.eq("targetUserId", uid)).collect(),
+        ctx.db.query("notifications").withIndex("by_user", (q) => q.eq("userId", uid)).collect(),
+        ctx.db.query("safetyEvents").withIndex("by_user", (q) => q.eq("userId", uid)).collect(),
+      ]);
+    // Bookings as adult too.
+    const adultBookings = await ctx.db
+      .query("bookings")
+      .withIndex("by_adult", (q) => q.eq("adultId", uid))
+      .collect();
+
+    return {
+      exportedAt: Date.now(),
+      account: { name: user.name, email: user.email, accountType: user.accountType },
+      profile,
+      settings,
+      wallets,
+      savingsGoals: goals,
+      transactions,
+      withdrawals,
+      applications: apps,
+      bookings: [...bookings, ...adultBookings],
+      reviewsReceived: reviews,
+      notifications: notifs,
+      safetyEvents: safetyEvs,
+    };
+  },
+});
+
+/**
+ * RGPD — request account deletion. The account is anonymized immediately:
+ * profile PII is wiped, sessions revoked, and a security event recorded for
+ * the retention policy. A human/purge job can then hard-delete if configured.
+ */
+export const deleteMyAccount = mutation({
+  args: { confirm: v.literal("SUPPRIMER") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (args.confirm !== "SUPPRIMER") throw new Error("Confirmation requise.");
+    const rl = await consumeRateLimit(ctx, "gdpr", user._id);
+    if (!rl.ok) throw new Error("Limite atteinte — réessaie plus tard.");
+
+    const now = Date.now();
+    // Wipe personal data from the profile (keep the row for referential
+    // integrity of bookings/payments — anonymized).
+    const profile = await getProfile(ctx, user._id);
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        firstName: "Utilisateur",
+        lastName: undefined,
+        city: undefined,
+        bio: undefined,
+        avatarIcon: "user",
+        birthDate: undefined,
+        interests: undefined,
+        skills: undefined,
+        availability: undefined,
+        payoutStripeAccountId: undefined,
+        linkedTeenIds: undefined,
+        status: "blocked",
+        dataDeletedAt: now,
+      });
+    }
+    await ctx.db.patch(user._id, { email: undefined, name: "Compte supprimé", image: undefined });
+    // Kill every session — the account becomes unusable.
+    await revokeAllSessions(ctx, user._id);
+    await logSecurityEvent(ctx, {
+      type: SECURITY_EVENTS.DATA_DELETED,
+      severity: "warning",
+      userId: user._id,
+      details: "Compte anonymisé et sessions révoquées (demande RGPD).",
+    });
+    return { ok: true };
   },
 });

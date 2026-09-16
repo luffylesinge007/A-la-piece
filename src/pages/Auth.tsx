@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/use-auth";
+import { api } from "@/convex/_generated/api";
+import { useMutation } from "convex/react";
 import { ArrowRight, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -26,6 +28,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Server-side brute-force guard (same budget recorded in the security journal).
+  const consumeCodeRequest = useMutation(api.loginGuard.consumeCodeRequest);
+  const consumeCodeCheck = useMutation(api.loginGuard.consumeCodeCheck);
 
   const asParam = searchParams.get("as");
   useEffect(() => {
@@ -40,8 +45,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      const email = formData.get("email") as string;
+      const guard = await consumeCodeRequest({ email });
+      if (!guard.ok) {
+        setError("Trop de codes demandés pour cet email. Réessaie dans un quart d'heure.");
+        return;
+      }
       await signIn("email-otp", formData);
-      setStep({ email: formData.get("email") as string });
+      setStep({ email });
     } catch (err) {
       setError("Impossible d'envoyer le code. Réessaie dans quelques instants.");
     } finally {
@@ -55,6 +66,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      const email = formData.get("email") as string;
+      const guard = await consumeCodeCheck({ email });
+      if (!guard.ok) {
+        setError("Trop de tentatives. Cet email est temporairement bloqué (15 min).");
+        return;
+      }
       await signIn("email-otp", formData);
       navigate(needsOnboarding ? `/onboarding${asParam ? `?as=${asParam}` : ""}` : redirect);
     } catch {

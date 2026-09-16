@@ -7,6 +7,38 @@ import {
   hasApprovedParent,
   requireUser,
 } from "./lib/helpers";
+import { consumeRateLimit, logSecurityEvent, requireActiveAccount, sanitizeText, SECURITY_EVENTS } from "./lib/security";
+
+/** Report categories — used by the UI and for automatic prioritization. */
+export const REPORT_CATEGORIES = [
+  "arnaque",
+  "faux_profil",
+  "fause_entreprise",
+  "harcèlement",
+  "contenu_inapproprié",
+  "demande_argent",
+  "phishing",
+  "discrimination",
+  "autre",
+] as const;
+export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
+
+/**
+ * Automatic report priority: anything involving a minor, money or phishing is
+ * treated as high priority by moderation.
+ */
+function autoPriority(category: string, reporterIsMinor: boolean): "low" | "medium" | "high" {
+  const highRisk = new Set([
+    "arnaque",
+    "harcèlement",
+    "demande_argent",
+    "phishing",
+    "contenu_inapproprié",
+  ]);
+  if (reporterIsMinor || highRisk.has(category)) return "high";
+  if (category === "autre" || category === "discrimination") return "medium";
+  return "medium";
+}
 
 /** Trigger SOS during a mission — logs a safety event and alerts trusted contacts. */
 export const triggerSOS = mutation({
@@ -22,6 +54,7 @@ export const triggerSOS = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    await requireActiveAccount(ctx, user);
     const now = Date.now();
     await ctx.db.insert("safetyEvents", {
       userId: user._id,
@@ -74,7 +107,7 @@ export const triggerSOS = mutation({
   },
 });
 
-/** Report a user, mission, message or booking. */
+/** Report a user, mission, message or booking. Auto-prioritized server-side. */
 export const submitReport = mutation({
   args: {
     targetType: v.union(
@@ -89,16 +122,39 @@ export const submitReport = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    if (!args.reason.trim()) throw new Error("Indique le motif du signalement.");
+    await requireActiveAccount(ctx, user);
+    // Anti-abuse: report-bombing is rate limited.
+    const rl = await consumeRateLimit(ctx, "report", user._id);
+    if (!rl.ok) {
+      throw new Error("Trop de signalements envoyés — réessaie plus tard.");
+    }
+    const reason = sanitizeText(args.reason, 120);
+    if (!reason) throw new Error("Indique le motif du signalement.");
+
+    const profile = await getProfile(ctx, user._id);
+    const reporterIsMinor = user.accountType === "teen";
+    const category = (REPORT_CATEGORIES as readonly string[]).includes(reason)
+      ? (reason as ReportCategory)
+      : "autre";
+    const priority = autoPriority(category, reporterIsMinor);
+
     await ctx.db.insert("reports", {
       reporterId: user._id,
       targetType: args.targetType,
-      targetId: args.targetId,
-      reason: args.reason.trim(),
-      description: args.description?.trim(),
+      targetId: args.targetId.slice(0, 64),
+      reason,
+      description: args.description ? sanitizeText(args.description, 1000) : undefined,
       status: "new",
-      priority: "medium",
+      priority,
       createdAt: Date.now(),
+    });
+    await logSecurityEvent(ctx, {
+      type: SECURITY_EVENTS.REPORT_AUTO_PRIORITY,
+      severity: priority === "high" ? "warning" : "info",
+      userId: user._id,
+      targetType: args.targetType,
+      targetId: args.targetId.slice(0, 64),
+      details: `catégorie=${category}, priorité=${priority}${reporterIsMinor ? ", signaleur mineur" : ""}`,
     });
   },
 });

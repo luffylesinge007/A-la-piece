@@ -9,6 +9,14 @@ import {
   requireUser,
 } from "./lib/helpers";
 import { evaluateTeenAccess, canTeenApply, getCategory } from "./lib/safety";
+import { scanMission } from "./lib/fraud";
+import {
+  consumeRateLimit,
+  logSecurityEvent,
+  requireActiveAccount,
+  sanitizeText,
+  SECURITY_EVENTS,
+} from "./lib/security";
 import type { Id } from "./_generated/dataModel";
 
 /** Public shape of a mission as seen in lists — no exact address. */
@@ -78,11 +86,16 @@ export const listMissions = query({
       if (user.accountType === "teen") viewerHasParent = await hasApprovedParent(ctx, user._id);
     }
 
+    // All missions with pending status; missions flagged by the anti-scam
+    // engine are hidden from everyone except their publisher until cleared.
     let missions = await ctx.db
       .query("missions")
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .order("desc")
       .collect();
+    missions = missions.filter(
+      (m) => !m.underReview || m.publisherId === viewerId,
+    );
 
     if (args.category) missions = missions.filter((m) => m.categorySlug === args.category);
     if (args.maxPrice !== undefined) missions = missions.filter((m) => m.priceEuros <= args.maxPrice!);
@@ -152,6 +165,11 @@ export const getMission = query({
     const user = await getCurrentUser(ctx);
     const mission = await ctx.db.get(args.missionId);
     if (!mission) return null;
+    // Anti-fraud: a mission held for moderation is invisible except to its
+    // publisher — even by direct ID access.
+    if (mission.underReview && mission.publisherId !== user?._id) {
+      return null;
+    }
 
     let viewerAge: number | null = null;
     let viewerHasParent = false;
@@ -232,7 +250,13 @@ export const createMission = mutation({
     if (!isAdultAccount(user)) {
       throw new Error("FORBIDDEN: seuls les adultes et organisations peuvent publier des missions.");
     }
-    await requireUser(ctx); // ensure profile exists
+    // Suspended/blocked accounts cannot publish (deny by default).
+    await requireActiveAccount(ctx, user);
+    // Anti-bot / anti-spam: publication rate limit.
+    const rl = await consumeRateLimit(ctx, "missionCreate", user._id);
+    if (!rl.ok) {
+      throw new Error("Trop de missions publiées récemment — réessaie plus tard.");
+    }
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -253,6 +277,24 @@ export const createMission = mutation({
       throw new Error("Titre et description obligatoires.");
     }
 
+    // Strict input hygiene (control chars, length caps).
+    const title = sanitizeText(args.title, 80);
+    const description = sanitizeText(args.description, 2000);
+    const city = sanitizeText(args.city, 60);
+    const area = sanitizeText(args.area, 60);
+    const exactAddress = args.exactAddress ? sanitizeText(args.exactAddress, 160) : undefined;
+    if (!title || !description) {
+      throw new Error("Titre et description obligatoires.");
+    }
+
+    // === ANTI-SCAM ENGINE — risky offers never reach teens unchecked ===
+    const scan = scanMission({
+      title,
+      description,
+      priceEuros: args.priceEuros,
+      durationMin: args.durationMin,
+    });
+
     const cat = getCategory(args.categorySlug)!;
     const risk = cat.risk;
     const accessForTeens = evaluateTeenAccess(
@@ -269,15 +311,15 @@ export const createMission = mutation({
 
     const missionId = await ctx.db.insert("missions", {
       publisherId: user._id,
-      title: args.title.trim(),
-      description: args.description.trim(),
+      title,
+      description,
       categorySlug: args.categorySlug,
       priceEuros: args.priceEuros,
       durationMin: args.durationMin,
       scheduledDate: args.scheduledDate,
       scheduledTime: args.scheduledTime,
-      city: args.city.trim(),
-      area: args.area.trim(),
+      city,
+      area,
       status: "published",
       riskLevel: risk,
       missionType: args.missionType ?? "verified",
@@ -290,8 +332,30 @@ export const createMission = mutation({
       requiresPin: args.requiresPin ?? false,
       applicantCount: 0,
       createdAt: Date.now(),
-      exactAddress: args.exactAddress?.trim(),
+      exactAddress,
+      // Anti-fraud: hold risky offers for human moderation.
+      underReview: scan.blocked,
+      reviewReasons: scan.blocked ? scan.reasons : undefined,
     });
+
+    if (scan.blocked) {
+      await ctx.db.insert("fraudReviews", {
+        missionId,
+        publisherId: user._id,
+        score: scan.score,
+        reasons: scan.reasons,
+        status: "pending",
+        createdAt: Date.now(),
+      });
+      await logSecurityEvent(ctx, {
+        type: SECURITY_EVENTS.MISSION_FLAGGED,
+        severity: "warning",
+        userId: user._id,
+        targetType: "mission",
+        targetId: missionId,
+        details: `score=${scan.score}; ${scan.reasons.join(" | ")}`.slice(0, 400),
+      });
+    }
 
     return missionId;
   },

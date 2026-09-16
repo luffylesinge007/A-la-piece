@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Textarea } from "@/components/ui/textarea";
 import { eurosFromNumber, formatDateShort, friendlyError, formatDateTime } from "@/lib/format";
 import { DataIcon, ProfileAvatar } from "@/components/icons";
-import { ArrowLeft, Ban, Cog, Flag, HandMetal, HelpCircle, MessagesSquare, PartyPopper, Search, Send, ShieldCheck, Smile, ThumbsUp, Timer, Sparkles, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Ban, Cog, ExternalLink, Flag, HandMetal, HelpCircle, MessagesSquare, PartyPopper, Search, Send, ShieldAlert, ShieldCheck, Smile, ThumbsUp, Timer, Sparkles, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PawPrint, CheckCircle2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -80,6 +80,17 @@ export default function Messages() {
       toast.error(friendlyError(error));
     }
   };
+
+  // When the user types something the classifier will refuse (IBAN, phone,
+  // code…), show a live hint so they understand *before* hitting send.
+  const localDangerHint = (() => {
+    const t = draft;
+    if (/\b(?:iban|rib|bic|swift)\b/i.test(t)) return "jamais d'IBAN/RIB — les paiements passent par l'app";
+    if (/\b(?:0[67])\d[ .-]?\d{2}[ .-]?\d{2}[ .-]?\d{2}[ .-]?\d{2}\b/.test(t)) return "pas de numéro de téléphone — reste dans l'app";
+    if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(t)) return "pas d'email — reste dans l'app";
+    if (/\b\d{6}\b/.test(t)) return "jamais de code de vérification";
+    return null;
+  })();
 
   const activeConv = conversations?.find((c: any) => c._id === id);
 
@@ -183,28 +194,54 @@ export default function Messages() {
                   Démarre la conversation — présente-toi brièvement.
                 </p>
               ) : (
-                messages.map((m: any) => (
-                  <div
-                    key={m._id}
-                    className={cn(
-                      "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
-                      m.type === "system"
-                        ? "mx-auto bg-muted text-center text-xs text-muted-foreground"
-                        : m.senderId === user?._id
-                          ? "ml-auto bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground",
-                    )}
-                  >
-                    {m.type === "system" ? (
-                      <span className="inline-flex items-center gap-1.5"><Cog className="size-3" /> {m.body}</span>
-                    ) : (
-                      m.body
-                    )}
-                    <span className={cn("mt-0.5 block text-[10px]", m.type === "system" ? "" : m.senderId === user?._id ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                      {formatDateTime(m.createdAt)}
-                    </span>
-                  </div>
-                ))
+                messages.map((m: any) => {
+                  const hasLinkFlag = Array.isArray(m.flags) && m.flags.includes("external_link");
+                  const hasPayFlag =
+                    Array.isArray(m.flags) &&
+                    (m.flags.includes("off_platform_payment") || m.flags.includes("money_request"));
+                  return (
+                    <div key={m._id} className="space-y-1">
+                      {/* Security caution banner above risky incoming messages. */}
+                      {m.senderId !== user?._id && m.type === "user" && (hasLinkFlag || hasPayFlag) && (
+                        <div
+                          role="alert"
+                          className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                        >
+                          <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
+                          <span>
+                            {hasPayFlag
+                              ? "Ce message parle d'un paiement hors application — refuse : seuls les paiements À LA PIÈCE te protègent (litige, remboursement)."
+                              : "Ce message contient un lien externe — vérifie l'adresse avant de cliquer : risque de phishing."}
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
+                          m.type === "system"
+                            ? "mx-auto bg-muted text-center text-xs text-muted-foreground"
+                            : m.senderId === user?._id
+                              ? "ml-auto bg-primary text-primary-foreground"
+                              : "bg-secondary text-secondary-foreground",
+                        )}
+                      >
+                        {m.type === "system" ? (
+                          <span className="inline-flex items-center gap-1.5"><Cog className="size-3" /> {m.body}</span>
+                        ) : hasLinkFlag ? (
+                          <span className="inline-flex items-start gap-1.5">
+                            <ExternalLink className="mt-0.5 size-3 shrink-0 opacity-70" />
+                            {m.body}
+                          </span>
+                        ) : (
+                          m.body
+                        )}
+                        <span className={cn("mt-0.5 block text-[10px]", m.type === "system" ? "" : m.senderId === user?._id ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                          {formatDateTime(m.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
               )}
               <div ref={bottomRef} />
             </div>
@@ -222,6 +259,11 @@ export default function Messages() {
                   </button>
                 ))}
               </div>
+              {localDangerHint && (
+                <p role="alert" className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                  <ShieldAlert className="size-3.5 shrink-0" /> {localDangerHint}
+                </p>
+              )}
               <div className="flex gap-2">
                 <Input
                   value={draft}
@@ -240,7 +282,7 @@ export default function Messages() {
                 </Button>
               </div>
               <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <ShieldCheck className="size-3 text-emerald-500" /> Le partage de téléphone, email ou adresse est bloqué automatiquement.
+                <ShieldCheck className="size-3 text-emerald-500" /> Le partage de téléphone, email, adresse, code ou IBAN est bloqué automatiquement. Ne paie jamais hors de l'app.
               </p>
             </div>
           </Card>

@@ -98,6 +98,10 @@ const schema = defineSchema(
       payoutStripeAccountId: v.optional(v.string()),
       // moderation
       status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("blocked"))),
+      /** Security: last password/email/phone sensitive change (timestamp only). */
+      lastSecurityChangeAt: v.optional(v.number()),
+      /** RGPD export/deletion bookkeeping (timestamps only). */
+      dataDeletedAt: v.optional(v.number()),
     }).index("by_user", ["userId"]),
 
     settings: defineTable({
@@ -161,6 +165,10 @@ const schema = defineSchema(
       createdAt: v.number(),
       // precise address — only revealed to the assigned/confirmed user
       exactAddress: v.optional(v.string()),
+      /** Anti-scam engine: mission queued for human moderation before being visible. */
+      underReview: v.optional(v.boolean()),
+      /** Why the mission was queued (fraud reasons, joined by " · "). */
+      reviewReasons: v.optional(v.array(v.string())),
     })
       .index("by_status", ["status", "createdAt"])
       .index("by_publisher", ["publisherId", "createdAt"])
@@ -280,6 +288,8 @@ const schema = defineSchema(
       senderId: v.optional(v.id("users")), // null = system message
       body: v.string(),
       type: v.union(v.literal("user"), v.literal("system")),
+      /** Security classifier result — powers in-app warnings. Never a secret. */
+      flags: v.optional(v.array(v.string())),
       createdAt: v.number(),
     }).index("by_conversation", ["conversationId", "createdAt"]),
 
@@ -337,6 +347,50 @@ const schema = defineSchema(
       details: v.optional(v.string()),
       createdAt: v.number(),
     }).index("by_created", ["createdAt"]),
+
+    // -----------------------------------------------------------------------
+    // Security infrastructure
+    // -----------------------------------------------------------------------
+
+    /**
+     * Server-side security journal. Never stores passwords, tokens or secrets —
+     * only the *kind* of event, the actor and coarse metadata.
+     */
+    securityEvents: defineTable({
+      userId: v.optional(v.id("users")), // actor when known
+      type: v.string(), // securityEventTypes values
+      severity: v.union(v.literal("info"), v.literal("warning"), v.literal("critical")),
+      targetType: v.optional(v.string()),
+      targetId: v.optional(v.string()),
+      details: v.optional(v.string()), // human-readable, secret-free
+      createdAt: v.number(),
+    })
+      .index("by_user", ["userId", "createdAt"])
+      .index("by_type", ["type", "createdAt"])
+      .index("by_created", ["createdAt"]),
+
+    /**
+     * Server-side rate limiting / brute-force protection. One row per
+     * (key, windowStart) — the limiter upserts and compares counters.
+     */
+    rateLimits: defineTable({
+      key: v.string(), // e.g. "login:acme@example.com" or "mission:create:<userId>"
+      windowStart: v.number(),
+      count: v.number(),
+      /** Set when a hard block (temporary suspension) is applied to this key. */
+      blockedUntil: v.optional(v.number()),
+    }).index("by_key", ["key"]),
+
+    /** Fraud review queue: missions auto-flagged by the anti-scam engine. */
+    fraudReviews: defineTable({
+      missionId: v.id("missions"),
+      publisherId: v.id("users"),
+      /** 0–100, higher = riskier. */
+      score: v.number(),
+      reasons: v.array(v.string()),
+      status: v.union(v.literal("pending"), v.literal("cleared"), v.literal("confirmed")),
+      createdAt: v.number(),
+    }).index("by_status", ["status"]),
   },
   {
     schemaValidation: false,

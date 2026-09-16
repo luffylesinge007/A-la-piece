@@ -12,6 +12,7 @@ import {
 } from "./lib/helpers";
 import { canTeenApply, computeFee, evaluateTeenAccess } from "./lib/safety";
 import { teenGamification } from "./gamification";
+import { consumeRateLimit, requireActiveAccount } from "./lib/security";
 
 /** Public shape of a candidate for adult decision cards (reputation + gamification, no sensitive data). */
 async function candidateCard(ctx: any, mission: any, app: any) {
@@ -117,6 +118,14 @@ export const apply = mutation({
       throw new Error(
         "FORBIDDEN: autorisation parentale requise pour cette mission. Demande à ton responsable de la valider.",
       );
+    }
+
+    // Suspended accounts cannot apply (deny by default).
+    await requireActiveAccount(ctx, user);
+    // Anti-bot: application flood guard.
+    const rl = await consumeRateLimit(ctx, "apply", user._id);
+    if (!rl.ok) {
+      throw new Error("Trop de candidatures envoyées récemment — fais une pause.");
     }
 
     // Verified missions accept only the first `maxApplicants` (default 5).
@@ -393,13 +402,22 @@ export const decline = mutation({
   },
 });
 
-/** Compatibility score — a recommendation aid, never a guarantee (shown with reasons). */
+/**
+ * Compatibility score — a recommendation aid, never a guarantee.
+ * Security: only the teen themself or the mission publisher may compute it
+ * (prevents harvesting other members' profile-based scoring).
+ */
 export const compatibility = query({
   args: { missionId: v.id("missions"), teenId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
     const mission = await ctx.db.get(args.missionId);
     const profile = await getProfile(ctx, args.teenId);
     if (!mission || !profile) return null;
+    // IDOR guard: involved parties only.
+    if (user._id !== args.teenId && mission.publisherId !== user._id) {
+      throw new Error("FORBIDDEN: cette évaluation n'est pas accessible.");
+    }
     const access = evaluateTeenAccess(mission, null);
     let score = 55;
     const reasons: string[] = [];

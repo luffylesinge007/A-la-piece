@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as applications from "../applications.js";
 import type * as auth from "../auth.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
@@ -15,10 +16,13 @@ import type * as bookings from "../bookings.js";
 import type * as chat from "../chat.js";
 import type * as gamification from "../gamification.js";
 import type * as http from "../http.js";
+import type * as lib_fraud from "../lib/fraud.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_legacy_icons from "../lib/legacy_icons.js";
 import type * as lib_safety from "../lib/safety.js";
+import type * as lib_security from "../lib/security.js";
 import type * as lib_testing from "../lib/testing.js";
+import type * as loginGuard from "../loginGuard.js";
 import type * as migrations from "../migrations.js";
 import type * as missions from "../missions.js";
 import type * as notifications from "../notifications.js";
@@ -38,6 +42,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   applications: typeof applications;
   auth: typeof auth;
   "auth/emailOtp": typeof auth_emailOtp;
@@ -45,10 +50,13 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   gamification: typeof gamification;
   http: typeof http;
+  "lib/fraud": typeof lib_fraud;
   "lib/helpers": typeof lib_helpers;
   "lib/legacy_icons": typeof lib_legacy_icons;
   "lib/safety": typeof lib_safety;
+  "lib/security": typeof lib_security;
   "lib/testing": typeof lib_testing;
+  loginGuard: typeof loginGuard;
   migrations: typeof migrations;
   missions: typeof missions;
   notifications: typeof notifications;

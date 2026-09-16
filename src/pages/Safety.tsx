@@ -15,6 +15,19 @@ import { BadgeCheck, Check, CircleCheck, CircleAlert, HeartHandshake, Link2, Pho
 import { useState } from "react";
 import { toast } from "sonner";
 
+/** Report categories — kept in sync with src/convex/safety.ts. */
+const REPORT_CATEGORY = [
+  "arnaque",
+  "faux_profil",
+  "fause_entreprise",
+  "harcèlement",
+  "contenu_inapproprié",
+  "demande_argent",
+  "phishing",
+  "discrimination",
+  "autre",
+] as const;
+
 export default function Safety() {
   const { user, hasApprovedParent } = useAuth();
   const safetyEvents = useQuery(api.safety.mySafetyEvents);
@@ -62,7 +75,12 @@ export default function Safety() {
   const handleReport = async () => {
     if (!reportReason.trim()) return;
     try {
-      await submitReport({ targetType: "user", targetId: "general", reason: reportReason.trim() });
+      await submitReport({
+        targetType: "user",
+        targetId: "general",
+        reason: REPORT_CATEGORY.includes(reportReason as any) ? reportReason : "autre",
+        description: REPORT_CATEGORY.includes(reportReason as any) ? undefined : reportReason.trim(),
+      });
       toast.success("Signalement transmis. Merci de nous aider à garder la plateforme sûre.");
       setReportOpen(false);
       setReportReason("");
@@ -287,15 +305,30 @@ export default function Safety() {
             <DialogHeader>
               <DialogTitle>Signaler un contenu ou un utilisateur</DialogTitle>
               <DialogDescription>
-                Les signalements sont traités par l'équipe de modération.
+                Les signalements impliquant un mineur ou un risque de sécurité sont traités en priorité.
               </DialogDescription>
             </DialogHeader>
-            <Textarea
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Motif : spam, fraude, insultes, harcèlement, contenu dangereux…"
-              rows={3}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: "arnaque", label: "Arnaque" },
+                { id: "faux_profil", label: "Faux profil" },
+                { id: "fause_entreprise", label: "Fausse entreprise" },
+                { id: "harcèlement", label: "Harcèlement" },
+                { id: "contenu_inapproprié", label: "Contenu inapproprié" },
+                { id: "demande_argent", label: "Demande d'argent" },
+                { id: "phishing", label: "Phishing" },
+                { id: "discrimination", label: "Discrimination" },
+                { id: "autre", label: "Autre" },
+              ].map((k) => (
+                <button
+                  key={k.id}
+                  onClick={() => setReportReason(k.id)}
+                  className={`rounded-lg border px-3 py-2 text-sm transition-colors ${reportReason === k.id ? "border-primary bg-primary/10 font-medium" : "hover:bg-accent"}`}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setReportOpen(false)}>Annuler</Button>
               <Button variant="destructive" onClick={handleReport} disabled={!reportReason.trim()}>Envoyer</Button>

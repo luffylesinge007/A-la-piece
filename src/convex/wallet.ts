@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import Stripe from "stripe";
-import { action, mutation, query } from "./_generated/server";
-import { api } from "./_generated/api";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { createNotification, creditWallet, getProfile, requireUser } from "./lib/helpers";
 
 const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -243,7 +243,7 @@ export const respondWithdrawal = mutation({
 
     // Real payout when Stripe is configured and a destination is known.
     if (secretKey && w.payoutStripeAccountId) {
-      await ctx.scheduler.runAfter(0, api.wallet.executePayout, { withdrawalId: w._id });
+      await ctx.scheduler.runAfter(0, internal.wallet.executePayout, { withdrawalId: w._id });
     }
 
     await createNotification(ctx, {
@@ -264,22 +264,22 @@ export const respondWithdrawal = mutation({
  * Execute the real Stripe transfer to the guardian's connected account.
  * Runs in a scheduled action so Stripe latency never blocks the mutation.
  */
-export const executePayout = action({
+export const executePayout = internalAction({
   args: { withdrawalId: v.id("withdrawals") },
   handler: async (ctx, args) => {
     if (!secretKey) {
-      await ctx.runMutation(api.wallet.failPayout, {
+      await ctx.runMutation(internal.wallet.failPayout, {
         withdrawalId: args.withdrawalId,
         reason: "Paiement non configuré (STRIPE_SECRET_KEY absente).",
       });
       return { paid: false as const };
     }
-    const w = await ctx.runQuery(api.wallet.getWithdrawalInternal, {
+    const w = await ctx.runQuery(internal.wallet.getWithdrawalInternal, {
       withdrawalId: args.withdrawalId,
     });
     if (!w || w.status !== "approved") return { paid: false as const };
     if (!w.payoutStripeAccountId) {
-      await ctx.runMutation(api.wallet.failPayout, {
+      await ctx.runMutation(internal.wallet.failPayout, {
         withdrawalId: args.withdrawalId,
         reason: "Aucun compte de virement enregistré pour le responsable.",
       });
@@ -294,13 +294,13 @@ export const executePayout = action({
         description: "À LA PIÈCE — retrait gains adolescent (via responsable légal)",
         metadata: { withdrawalId: args.withdrawalId, teenId: w.userId },
       });
-      await ctx.runMutation(api.wallet.markPayoutPaid, {
+      await ctx.runMutation(internal.wallet.markPayoutPaid, {
         withdrawalId: args.withdrawalId,
         providerRef: transfer.id,
       });
       return { paid: true as const, transferId: transfer.id };
     } catch (error) {
-      await ctx.runMutation(api.wallet.failPayout, {
+      await ctx.runMutation(internal.wallet.failPayout, {
         withdrawalId: args.withdrawalId,
         reason: error instanceof Error ? error.message : "Erreur Stripe inconnue.",
       });
@@ -310,7 +310,7 @@ export const executePayout = action({
 });
 
 /** Internal read for the payout action. */
-export const getWithdrawalInternal = query({
+export const getWithdrawalInternal = internalQuery({
   args: { withdrawalId: v.id("withdrawals") },
   handler: async (ctx, args) => {
     return ctx.db.get(args.withdrawalId);
@@ -318,7 +318,7 @@ export const getWithdrawalInternal = query({
 });
 
 /** Payout succeeded: finalize balances and transactions. */
-export const markPayoutPaid = mutation({
+export const markPayoutPaid = internalMutation({
   args: { withdrawalId: v.id("withdrawals"), providerRef: v.string() },
   handler: async (ctx, args) => {
     const w = await ctx.db.get(args.withdrawalId);
@@ -344,7 +344,7 @@ export const markPayoutPaid = mutation({
 });
 
 /** Payout failed: refund the locked amount so the teen never loses money. */
-export const failPayout = mutation({
+export const failPayout = internalMutation({
   args: { withdrawalId: v.id("withdrawals"), reason: v.string() },
   handler: async (ctx, args) => {
     const w = await ctx.db.get(args.withdrawalId);
