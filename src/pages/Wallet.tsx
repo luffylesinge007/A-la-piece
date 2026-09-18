@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
+import { BankAccountCard } from "@/components/BankAccountCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,12 +28,15 @@ export default function Wallet() {
   const withdrawals = useQuery(api.wallet.myWithdrawals);
   const guardianPending = useQuery(api.wallet.guardianWithdrawals);
   const payoutState = useQuery(api.wallet.payoutConfigured);
+  const bank = useQuery(api.bank.myBankAccount);
+  const pendingConsents = useQuery(api.bank.pendingBankConsents);
 
   const addGoal = useMutation(api.wallet.addGoal);
   const allocate = useMutation(api.wallet.allocateToGoal);
   const deleteGoal = useMutation(api.wallet.deleteGoal);
   const requestWithdrawal = useMutation(api.wallet.requestWithdrawal);
   const respondWithdrawal = useMutation(api.wallet.respondWithdrawal);
+  const respondConsent = useMutation(api.bank.respondBankConsent);
 
   const [goalOpen, setGoalOpen] = useState(false);
   const [goalLabel, setGoalLabel] = useState("");
@@ -41,6 +45,7 @@ export default function Wallet() {
   const [allocAmount, setAllocAmount] = useState("");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [destination, setDestination] = useState<"own_bank" | "guardian">("own_bank");
   const [busy, setBusy] = useState<string | null>(null);
 
   const available = wallet?.availableCents ?? 0;
@@ -93,8 +98,12 @@ export default function Wallet() {
     }
     setBusy("withdraw");
     try {
-      await requestWithdrawal({ amountCents: amount });
-      toast.success("Demande envoyée à ton responsable");
+      await requestWithdrawal({ amountCents: amount, destination });
+      toast.success(
+        destination === "own_bank"
+          ? "Virement lancé vers ton compte bancaire"
+          : "Demande envoyée à ton responsable",
+      );
       setWithdrawOpen(false);
       setWithdrawAmount("");
     } catch (error) {
@@ -116,19 +125,69 @@ export default function Wallet() {
     }
   };
 
+  const handleConsent = async (teenUserId: any, approve: boolean) => {
+    setBusy("consent");
+    try {
+      await respondConsent({ teenUserId, approve });
+      toast.success(approve ? "Autorisation accordée" : "Autorisation refusée");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <AppShell>
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
-          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"><WalletIcon className="size-6 text-primary" /> Mon portefeuille</h1>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight"><WalletIcon className="size-6 text-primary" /> Mon argent</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isTeen
-              ? "Ton argent gagné mission après mission. Retire-le vers le compte de ton responsable en quelques secondes."
+              ? "Ton argent gagné mission après mission. Verse-le sur ton propre compte bancaire ou celui de ton responsable."
               : isParent
-                ? "Valide les retraits de ton ado et suis les virements vers ton compte."
+                ? "Autorise le compte bancaire de ton ado, valide ses retraits et suis les virements."
                 : "Historique de tes paiements et remboursements."}
           </p>
         </div>
+
+        {/* Parent: pending bank-account consents (spec #43 §2) */}
+        {isParent && pendingConsents && pendingConsents.length > 0 && (
+          <Card className="card-shadow border-sky-500/40 bg-sky-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 font-display text-base">
+                <Landmark className="size-4 text-sky-500" /> Autorisation compte bancaire
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pendingConsents.map((c: any) => (
+                <div key={c.teenUserId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3.5">
+                  <p className="text-sm">
+                    <strong>{c.teenName}</strong> souhaite recevoir ses gains sur son propre compte bancaire.
+                    Ton autorisation est demandée une seule fois pour cette fonctionnalité.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy === "consent"}
+                      onClick={() => handleConsent(c.teenUserId, false)}
+                    >
+                      Refuser
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={busy === "consent"}
+                      onClick={() => handleConsent(c.teenUserId, true)}
+                    >
+                      <Check className="size-4" /> Autoriser
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Guardian: withdrawals awaiting decision */}
         {isParent && guardianPending && guardianPending.length > 0 && (
@@ -179,8 +238,8 @@ export default function Wallet() {
                   </p>
                   <p className="mt-1 font-display text-3xl font-extrabold">{euros(available)}</p>
                   {isTeen && available > 0 && (
-                    <Button size="sm" className="mt-3 w-full" onClick={() => setWithdrawOpen(true)}>
-                      <ArrowUpRight className="size-4" /> Retirer vers mon responsable
+                    <Button size="sm" className="mt-3 w-full" onClick={() => { setDestination(bank?.payoutReady ? "own_bank" : "guardian"); setWithdrawOpen(true); }}>
+                      <ArrowUpRight className="size-4" /> Recevoir sur mon compte bancaire
                     </Button>
                   )}
                 </CardContent>
@@ -341,13 +400,18 @@ export default function Wallet() {
           </CardContent>
         </Card>
 
+        {/* Teen: bank account management (spec #43) */}
+        {isTeen && <BankAccountCard />}
+
         {/* Withdrawal dialog */}
         <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Retirer mon argent</DialogTitle>
+              <DialogTitle>Recevoir mon argent</DialogTitle>
               <DialogDescription>
-                Le montant est viré au compte du responsable légal qui t'a validé. Ton responsable reçoit une demande à confirmer.
+                {destination === "own_bank"
+                  ? "Virement direct vers ton compte bancaire à ton nom — sans validation à chaque paiement."
+                  : "Le montant est viré au compte de ton responsable légal, après sa validation."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -375,13 +439,55 @@ export default function Wallet() {
                   </Button>
                 )}
               </div>
+              {bank?.account && (
+                <div className="space-y-1.5">
+                  <Label>Vers quel compte ?</Label>
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => bank.payoutReady && setDestination("own_bank")}
+                      disabled={!bank.payoutReady}
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${destination === "own_bank" ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
+                    >
+                      <Landmark className="size-4 shrink-0 text-primary" />
+                      <span className="text-sm">
+                        <span className="font-semibold">Mon compte bancaire</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {bank.payoutReady
+                            ? `•••• ${bank.account.last4 ?? "••••"} — virement direct`
+                            : "Vérification en cours — indisponible pour l'instant"}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDestination("guardian")}
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${destination === "guardian" ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
+                    >
+                      <WalletIcon className="size-4 shrink-0 text-primary" />
+                      <span className="text-sm">
+                        <span className="font-semibold">Compte de mon responsable</span>
+                        <span className="block text-xs text-muted-foreground">Nécessite sa validation</span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+              {bank && !bank.account && (
+                <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  Astuce : ajoute ton compte bancaire depuis « Mon compte bancaire » plus bas pour recevoir
+                  tes paiements directement, sans validation à chaque fois.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
-                Le montant est réservé dès la demande. Si le virement échoue ou si le responsable refuse, il est automatiquement remis dans ton solde.
+                Le montant est réservé dès la demande. Si le virement échoue, il est automatiquement remis dans ton solde.
               </p>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setWithdrawOpen(false)}>Annuler</Button>
-              <Button onClick={handleWithdraw} disabled={busy !== null || !withdrawAmount}>Envoyer la demande</Button>
+              <Button onClick={handleWithdraw} disabled={busy !== null || !withdrawAmount}>
+                {destination === "own_bank" ? "Recevoir sur mon compte" : "Envoyer la demande"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

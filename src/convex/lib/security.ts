@@ -112,6 +112,8 @@ export const RATE_RULES = {
   gdpr: { max: 3, windowMs: 24 * 60 * 60_000 },
   /** Recovery emails per account. */
   recovery: { max: 3, windowMs: 15 * 60_000 },
+  /** Step-up codes for bank account changes — prevents code bombing. */
+  bankChange: { max: 3, windowMs: 15 * 60_000, blockAfterViolations: 2, blockMs: 60 * 60_000 },
 } satisfies Record<string, LimitRule>;
 
 export type RateRuleName = keyof typeof RATE_RULES;

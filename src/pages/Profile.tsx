@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/components/app-shell";
+import { BankAccountCard } from "@/components/BankAccountCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -172,6 +173,9 @@ export default function Profile() {
                 </Card>
               ))}
             </div>
+
+            {/* Bank account (teens — spec #43) */}
+            <BankAccountCard />
 
             {/* Badges — earned + locked */}
             {stats && (

@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { BOOKING_STATUS_META, PAYMENT_STATUS_META, eurosFromNumber, formatDate, formatDuration, friendlyError, formatDateTime } from "@/lib/format";
+import { BOOKING_STATUS_META, PAYMENT_STATUS_META, euros, eurosFromNumber, formatDate, formatDuration, friendlyError, formatDateTime } from "@/lib/format";
+import { Landmark } from "lucide-react";
 import { ProfileAvatar } from "@/components/icons";
 import {
   AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, CreditCard, FileCheck, Lock, MapPin, Play, ShieldAlert, ShieldCheck, Siren, Star, Star as StarFilled, Hourglass,
@@ -309,6 +310,29 @@ export default function BookingDetail() {
           </Card>
         )}
 
+        {/* Payout available (teen, spec #43 §3) */}
+        {isTeen && booking.status === "completed" && booking.payment?.status === "released" && (
+          <Card className="card-shadow border-emerald-500/40 bg-emerald-500/5">
+            <CardContent className="p-5">
+              <p className="flex items-center gap-2 font-display font-bold text-emerald-700 dark:text-emerald-400">
+                <Landmark className="size-4" /> Paiement disponible
+              </p>
+              <div className="mt-3 space-y-1 text-sm">
+                <p className="flex justify-between gap-4"><span className="text-muted-foreground">Mission</span><span>{booking.mission?.title}</span></p>
+                <p className="flex justify-between gap-4"><span className="text-muted-foreground">Montant</span><span>{euros(booking.payment.amountCents)}</span></p>
+                <p className="flex justify-between gap-4"><span className="text-muted-foreground">Frais éventuels</span><span>{euros(booking.payment.feeCents)}</span></p>
+                <p className="flex justify-between gap-4 border-t pt-1 font-semibold"><span>Montant à recevoir</span><span>{euros(booking.payment.amountCents - booking.payment.feeCents)}</span></p>
+              </div>
+              <Button asChild className="mt-4 w-full" size="lg">
+                <Link to="/portefeuille"><Landmark className="size-4" /> Recevoir sur mon compte bancaire</Link>
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Le montant est déjà dans ton portefeuille — ce bouton lance le virement vers ton compte bancaire (à ton nom).
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Mission actions */}
         <Card className="card-shadow border-border/60">
           <CardContent className="space-y-4 p-5">
@@ -356,6 +380,13 @@ export default function BookingDetail() {
                 <p className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="size-4" /> Paiement versé — mission bouclée !
                 </p>
+              )}
+              {isTeen && booking.status === "completed" && booking.payment?.status === "released" && (
+                <Button asChild className="w-full" size="lg" variant="outline">
+                  <Link to="/portefeuille">
+                    <Landmark className="size-4" /> Recevoir sur mon compte bancaire
+                  </Link>
+                </Button>
               )}
               {["pending", "confirmed"].includes(booking.status) && (
                 <Button

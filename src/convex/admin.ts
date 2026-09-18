@@ -184,6 +184,34 @@ export const confirmFraudReview = mutation({
 });
 
 // ---------------------------------------------------------------------------
+// Payout review queue (spec #43 §6 — held payouts)
+// ---------------------------------------------------------------------------
+
+/** Held payouts (anti-fraud gate) — oldest first for fairness. */
+export const payoutQueue = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdminLike(ctx);
+    const rows = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "on_hold"))
+      .collect();
+    const result = [];
+    for (const w of rows.sort((a, b) => a.requestedAt - b.requestedAt)) {
+      const teenProfile = await getProfile(ctx, w.userId);
+      result.push({
+        _id: w._id,
+        teenName: teenProfile?.firstName ?? "Adolescent",
+        amountCents: w.amountCents,
+        holdReason: w.holdReason ?? "Risque détecté",
+        requestedAt: w.requestedAt,
+      });
+    }
+    return result;
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Reports moderation
 // ---------------------------------------------------------------------------
 

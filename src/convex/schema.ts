@@ -31,7 +31,7 @@ export const BOOKING_STATUS = ["pending", "confirmed", "in_progress", "completed
 export const PAYMENT_STATUS = ["requires_payment", "processing", "held", "released", "refunded", "failed"] as const;
 export const TRANSACTION_TYPE = ["mission_payment", "platform_fee", "tip", "withdrawal", "refund", "payout_transfer"] as const;
 /** Teen payout requests — money actually moves via Stripe when configured. */
-export const WITHDRAWAL_STATUS = ["requested", "approved", "paid", "rejected", "failed"] as const;
+export const WITHDRAWAL_STATUS = ["requested", "approved", "on_hold", "paid", "rejected", "failed"] as const;
 const withdrawalStatusValidator = v.union(...WITHDRAWAL_STATUS.map((s) => v.literal(s)));
 export const RISK_LEVEL = ["low", "medium", "high"] as const;
 export const ACCESS_LEVEL = ["allowed", "parental_approval", "adults_only", "forbidden"] as const;
@@ -96,6 +96,35 @@ const schema = defineSchema(
       verifiedPayment: v.optional(v.boolean()),
       /** Parent/guardian: Stripe connected account receiving the teen's payouts (acct_…). */
       payoutStripeAccountId: v.optional(v.string()),
+      /**
+       * Teen's OWN bank account for payouts (feature #43).
+       * Only Stripe identifiers and display data are stored — never any bank
+       * secret: the IBAN itself lives exclusively inside Stripe Connect.
+       */
+      bankAccount: v.optional(
+        v.object({
+          stripeAccountId: v.string(),
+          holderName: v.string(),
+          country: v.optional(v.string()),
+          status: v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected")),
+          payoutsEnabled: v.optional(v.boolean()),
+          last4: v.optional(v.string()),
+          bankName: v.optional(v.string()),
+          createdAt: v.number(),
+          verifiedAt: v.optional(v.number()),
+        }),
+      ),
+      /** Parental consent for the bank account (provider rules for under-16s). */
+      bankConsent: v.optional(
+        v.object({
+          status: v.union(v.literal("pending"), v.literal("approved"), v.literal("declined")),
+          parentId: v.optional(v.id("users")),
+          requestedAt: v.number(),
+          decidedAt: v.optional(v.number()),
+        }),
+      ),
+      /** Anti-fraud: when the payout account last changed (drives the security delay). */
+      bankAccountChangedAt: v.optional(v.number()),
       // moderation
       status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("blocked"))),
       /** Security: last password/email/phone sensitive change (timestamp only). */
@@ -262,6 +291,13 @@ const schema = defineSchema(
       guardianId: v.optional(v.id("users")), // approving parent/responsible adult
       amountCents: v.number(),
       status: withdrawalStatusValidator,
+      /** Where the money goes: the teen's own bank or the guardian's account. */
+      destination: v.optional(v.union(v.literal("own_bank"), v.literal("guardian"))),
+      /** Mission concerned (payment tracking, spec #43 §4). */
+      bookingId: v.optional(v.id("bookings")),
+      /** Anti-fraud: payment parked pending extra verification (spec #43 §6). */
+      onHold: v.optional(v.boolean()),
+      holdReason: v.optional(v.string()),
       /** Payout destination for the guardian's connected account (Stripe acct_…). */
       payoutStripeAccountId: v.optional(v.string()),
       provider: v.optional(v.literal("stripe")),
@@ -380,6 +416,20 @@ const schema = defineSchema(
       /** Set when a hard block (temporary suspension) is applied to this key. */
       blockedUntil: v.optional(v.number()),
     }).index("by_key", ["key"]),
+
+    /**
+     * Step-up verification codes for sensitive operations (bank account
+     * changes). Only a salted SHA-256 hash is stored — never the code itself.
+     */
+    verificationCodes: defineTable({
+      userId: v.id("users"),
+      purpose: v.union(v.literal("bank_account_change")),
+      codeHash: v.string(),
+      expiresAt: v.number(),
+      attempts: v.number(),
+      consumedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    }).index("by_user_purpose", ["userId", "purpose"]),
 
     /** Fraud review queue: missions auto-flagged by the anti-scam engine. */
     fraudReviews: defineTable({

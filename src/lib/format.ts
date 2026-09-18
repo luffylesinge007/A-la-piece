@@ -78,10 +78,23 @@ export const PAYMENT_STATUS_META: Record<string, { label: string; className: str
 
 export const WITHDRAWAL_STATUS_META: Record<string, { label: string; className: string }> = {
   requested: { label: "À valider", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  approved: { label: "Validé — virement en cours", className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
-  paid: { label: "Viré", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  approved: { label: "En cours", className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  on_hold: { label: "En vérification", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  paid: { label: "Envoyé", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
   rejected: { label: "Refusé", className: "bg-zinc-500/10 text-zinc-500" },
-  failed: { label: "Échec du virement", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+  failed: { label: "Échec — remboursé", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+};
+
+/** Spec #43 §4 — tracking statuses shown on « Mon argent ». */
+export const PAYOUT_STATUS_META: Record<string, { label: string; className: string }> = {
+  pending: { label: "En attente", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  processing: { label: "En cours", className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  requested: { label: "En cours", className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  sent: { label: "Envoyé", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  paid: { label: "Reçu", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  on_hold: { label: "En vérification", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  failed: { label: "Échec", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+  refunded: { label: "Remboursé", className: "bg-zinc-500/10 text-zinc-500" },
 };
 
 export const APPLICATION_STATUS_META: Record<string, { label: string; className: string }> = {

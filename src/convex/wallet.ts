@@ -3,6 +3,9 @@ import Stripe from "stripe";
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { createNotification, creditWallet, getProfile, requireUser } from "./lib/helpers";
+import { computeAge } from "./lib/safety";
+import { evaluatePayoutRisk } from "./lib/payoutRisk";
+import { logSecurityEvent, SECURITY_EVENTS } from "./lib/security";
 
 const secretKey = process.env.STRIPE_SECRET_KEY;
 
@@ -116,9 +119,14 @@ export const guardianWithdrawals = query({
  * Teen requests a withdrawal of (part of) their available balance.
  * The money is locked immediately: moved out of `availableCents` while the
  * request is pending, and fully refunded if the request is rejected or fails.
+ *
+ * Destination (spec #43): the teen's OWN verified bank account by default;
+ * the guardian's account stays available as a fallback choice. Parental
+ * approval is required once for the bank-account feature when the provider's
+ * rules demand it (under-16) — never per payout.
  */
 export const requestWithdrawal = mutation({
-  args: { amountCents: v.number() },
+  args: { amountCents: v.number(), destination: v.optional(v.union(v.literal("own_bank"), v.literal("guardian"))), bookingId: v.optional(v.id("bookings")) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     if (user.accountType !== "teen") {
@@ -141,21 +149,26 @@ export const requestWithdrawal = mutation({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .first();
-    if (open && (open.status === "requested" || open.status === "approved")) {
+    if (open && (open.status === "requested" || open.status === "approved" || open.status === "on_hold")) {
       throw new Error("Une demande de retrait est déjà en cours.");
     }
 
-    // Lock the funds out of the available balance while pending.
-    await creditWallet(ctx, user._id, "availableCents", -args.amountCents);
+    const profile = await getProfile(ctx, user._id);
+    const bank = profile?.bankAccount;
+    const age = computeAge(profile?.birthDate);
+    const needsConsent = age === null || age < 16;
+    const consentOk = !needsConsent || profile?.bankConsent?.status === "approved";
 
-    // Destination: the guardian's Stripe connected account if they set one.
+    const destination = args.destination ?? (bank ? "own_bank" : "guardian");
+
+    // Resolve the payout destination and its readiness.
+    let guardianId: any = undefined;
+    let payoutStripeAccountId: string | undefined = undefined;
     const link = await ctx.db
       .query("parentLinks")
       .withIndex("by_teen", (q) => q.eq("teenUserId", user._id))
       .first();
-    let guardianId: any = undefined;
-    let payoutStripeAccountId: string | undefined = undefined;
-    if (link && link.status === "approved") {
+    if (link?.status === "approved") {
       guardianId = link.parentUserId;
       const guardianProfile = await getProfile(ctx, link.parentUserId);
       if (guardianProfile?.verifiedPayment) {
@@ -163,25 +176,105 @@ export const requestWithdrawal = mutation({
       }
     }
 
+    let destAccountId: string | undefined;
+    let holdReasons: string[] = [];
+    if (destination === "own_bank") {
+      if (!bank) {
+        throw new Error(
+          "Aucun compte bancaire enregistré. Ajoute d'abord ton compte dans « Mon argent ».",
+        );
+      }
+      if (!consentOk) {
+        throw new Error(
+          "L'autorisation de ton responsable est requise pour les virements vers ton compte bancaire.",
+        );
+      }
+      if (!bank.payoutsEnabled || bank.status !== "verified") {
+        throw new Error(
+          "Ton compte bancaire attend la vérification du prestataire de paiement — réessaie bientôt.",
+        );
+      }
+      destAccountId = bank.stripeAccountId;
+      // Anti-fraud gate (spec #43 §6): park the payout, never block the money.
+      const failed = await ctx.db
+        .query("withdrawals")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .take(5);
+      const recentFailed = failed.filter(
+        (w) => w.status === "failed" && (Date.now() - (w.paidAt ?? w.requestedAt)) < 30 * 86_400_000,
+      ).length;
+      const risk = evaluatePayoutRisk({
+        amountCents: args.amountCents,
+        accountCountry: bank.country,
+        bankAccountChangedAt: profile?.bankAccountChangedAt,
+        recentFailedPayouts: recentFailed,
+      });
+      holdReasons = risk.reasons;
+    } else {
+      if (!payoutStripeAccountId) {
+        throw new Error(
+          "Le compte de virement de ton responsable n'est pas encore connecté — choisis ton compte bancaire ou attends sa configuration.",
+        );
+      }
+      destAccountId = payoutStripeAccountId;
+    }
+
+    // Lock the funds out of the available balance while pending.
+    await creditWallet(ctx, user._id, "availableCents", -args.amountCents);
+
+    const onHold = holdReasons.length > 0;
     const id = await ctx.db.insert("withdrawals", {
       userId: user._id,
-      guardianId,
+      guardianId: destination === "own_bank" ? undefined : guardianId,
       amountCents: args.amountCents,
-      status: "requested",
-      payoutStripeAccountId,
+      status: onHold ? "on_hold" : "requested",
+      destination,
+      bookingId: args.bookingId,
+      onHold,
+      holdReason: onHold ? holdReasons.join(" · ") : undefined,
+      payoutStripeAccountId: destAccountId,
       requestedAt: Date.now(),
     });
+
+    if (onHold) {
+      await logSecurityEvent(ctx, {
+        type: "payout.hold",
+        severity: "warning",
+        userId: user._id,
+        targetType: "withdrawal",
+        targetId: id,
+        details: `Virement mis en attente — ${holdReasons.join(" · ")}`,
+      });
+    }
 
     await ctx.db.insert("transactions", {
       userId: user._id,
       type: "withdrawal",
       amountCents: 0, // net zero: available → locked, until paid/rejected
       status: "pending",
-      description: "Demande de retrait — en attente de validation du responsable",
+      description:
+        destination === "own_bank"
+          ? onHold
+            ? "Virement en vérification — en attente de notre équipe"
+            : "Virement vers ton compte bancaire — en cours"
+          : "Demande de retrait — en attente de validation du responsable",
       createdAt: Date.now(),
     });
 
-    if (guardianId) {
+    if (destination === "own_bank" && !onHold) {
+      // Own-bank payouts move directly — no guardian approval needed (spec).
+      // The success/failure notification is sent by the payout internal flow.
+      await ctx.scheduler.runAfter(0, internal.wallet.executePayout, { withdrawalId: id });
+    } else if (destination === "own_bank" && onHold) {
+      await createNotification(ctx, {
+        userId: user._id,
+        type: "payment",
+        title: "Virement en vérification",
+        body: `Ton paiement de ${args.amountCents / 100} € est temporairement en attente d'une vérification supplémentaire. Rien n'est perdu — il repart dès que la vérification est faite.`,
+        link: "/portefeuille",
+      });
+    } else if (guardianId) {
       const myProfile = await getProfile(ctx, user._id);
       await createNotification(ctx, {
         userId: guardianId,
@@ -261,8 +354,9 @@ export const respondWithdrawal = mutation({
 });
 
 /**
- * Execute the real Stripe transfer to the guardian's connected account.
- * Runs in a scheduled action so Stripe latency never blocks the mutation.
+ * Execute the real Stripe transfer to the destination account — the teen's
+ * own bank (spec #43) or the guardian's connected account. Runs in a
+ * scheduled action so Stripe latency never blocks the mutation.
  */
 export const executePayout = internalAction({
   args: { withdrawalId: v.id("withdrawals") },
@@ -277,11 +371,14 @@ export const executePayout = internalAction({
     const w = await ctx.runQuery(internal.wallet.getWithdrawalInternal, {
       withdrawalId: args.withdrawalId,
     });
-    if (!w || w.status !== "approved") return { paid: false as const };
-    if (!w.payoutStripeAccountId) {
+    if (!w || !(w.status === "approved" || w.status === "requested")) return { paid: false as const };
+    if (!w.payoutStripeAccountId || !w.payoutStripeAccountId.startsWith("acct_")) {
       await ctx.runMutation(internal.wallet.failPayout, {
         withdrawalId: args.withdrawalId,
-        reason: "Aucun compte de virement enregistré pour le responsable.",
+        reason:
+          w.destination === "own_bank"
+            ? "Le compte bancaire n'a pas encore été vérifié par le prestataire de paiement."
+            : "Aucun compte de virement enregistré pour le responsable.",
       });
       return { paid: false as const };
     }
@@ -291,8 +388,11 @@ export const executePayout = internalAction({
         amount: w.amountCents,
         currency: "eur",
         destination: w.payoutStripeAccountId,
-        description: "À LA PIÈCE — retrait gains adolescent (via responsable légal)",
-        metadata: { withdrawalId: args.withdrawalId, teenId: w.userId },
+        description:
+          w.destination === "own_bank"
+            ? "À LA PIÈCE — virement des gains vers le compte bancaire de l'adolescent"
+            : "À LA PIÈCE — retrait gains adolescent (via responsable légal)",
+        metadata: { withdrawalId: args.withdrawalId, teenId: w.userId, destination: w.destination ?? "guardian" },
       });
       await ctx.runMutation(internal.wallet.markPayoutPaid, {
         withdrawalId: args.withdrawalId,
@@ -322,7 +422,7 @@ export const markPayoutPaid = internalMutation({
   args: { withdrawalId: v.id("withdrawals"), providerRef: v.string() },
   handler: async (ctx, args) => {
     const w = await ctx.db.get(args.withdrawalId);
-    if (!w || w.status !== "approved") return;
+    if (!w || !(w.status === "approved" || w.status === "requested")) return;
     await ctx.db.patch(w._id, { status: "paid", paidAt: Date.now(), providerRef: args.providerRef });
     await creditWallet(ctx, w.userId, "availableCents", 0); // no-op, keeps wallet row alive
     await ctx.db.insert("transactions", {
@@ -330,14 +430,17 @@ export const markPayoutPaid = internalMutation({
       type: "payout_transfer",
       amountCents: -w.amountCents,
       status: "completed",
-      description: `Virement effectué — ${w.amountCents / 100} € envoyés au compte du responsable`,
+      description:
+        w.destination === "own_bank"
+          ? `Virement effectué — ${w.amountCents / 100} € envoyés sur ton compte bancaire`
+          : `Virement effectué — ${w.amountCents / 100} € envoyés au compte du responsable`,
       createdAt: Date.now(),
     });
     await createNotification(ctx, {
       userId: w.userId,
       type: "payment",
-      title: "Virement effectué",
-      body: `${w.amountCents / 100} € ont été virés au compte de ton responsable.`,
+      title: "Ton paiement a été envoyé vers ton compte bancaire.",
+      body: `${w.amountCents / 100} € — arrivée sous 1 à 2 jours ouvrés selon ta banque.`,
       link: "/portefeuille",
     });
   },
@@ -348,7 +451,7 @@ export const failPayout = internalMutation({
   args: { withdrawalId: v.id("withdrawals"), reason: v.string() },
   handler: async (ctx, args) => {
     const w = await ctx.db.get(args.withdrawalId);
-    if (!w || w.status !== "approved") return;
+    if (!w || !(w.status === "approved" || w.status === "requested")) return;
     await creditWallet(ctx, w.userId, "availableCents", w.amountCents);
     await ctx.db.patch(w._id, { status: "failed", failureReason: args.reason });
     await ctx.db.insert("transactions", {
@@ -359,13 +462,71 @@ export const failPayout = internalMutation({
       description: "Virement impossible — montant remis dans ton solde disponible",
       createdAt: Date.now(),
     });
+    // Spec #43 §5: clear failure notification, never any bank data in it.
     await createNotification(ctx, {
       userId: w.userId,
       type: "payment",
-      title: "Virement impossible",
-      body: "Le montant a été remis dans ton solde disponible. Réessaie plus tard.",
+      title: "Ton paiement n'a pas pu être envoyé.",
+      body: "Vérifie ton compte bancaire ou les informations demandées — le montant est de retour dans ton solde disponible.",
       link: "/portefeuille",
     });
+  },
+});
+
+/**
+ * Moderation decision on a held payout (spec #43 §6).
+ * approve=true → resume the transfer; approve=false → refund the balance.
+ * The money is never blocked indefinitely and there is always a resolution path.
+ */
+export const resolveHeldPayout = mutation({
+  args: { withdrawalId: v.id("withdrawals"), approve: v.boolean() },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (user.accountType !== "admin" && user.accountType !== "moderator") {
+      throw new Error("FORBIDDEN");
+    }
+    const w = await ctx.db.get(args.withdrawalId);
+    if (!w || w.status !== "on_hold") throw new Error("NOT_FOUND");
+
+    if (!args.approve) {
+      await creditWallet(ctx, w.userId, "availableCents", w.amountCents);
+      await ctx.db.patch(w._id, { status: "failed", onHold: false, failureReason: "Refusé après vérification — montant restitué" });
+      await ctx.db.insert("transactions", {
+        userId: w.userId,
+        type: "withdrawal",
+        amountCents: 0,
+        status: "refunded",
+        description: "Virement refusé après vérification — montant remis dans ton solde disponible",
+        createdAt: Date.now(),
+      });
+      await createNotification(ctx, {
+        userId: w.userId,
+        type: "payment",
+        title: "Virement vérifié — montant restitué",
+        body: "Après vérification, le virement n'a pas été autorisé. Le montant est de retour dans ton solde disponible. Contacte le support pour plus de détails.",
+        link: "/portefeuille",
+      });
+      return { resolved: true as const, refunded: true as const };
+    }
+
+    await ctx.db.patch(w._id, { status: "approved", onHold: false });
+    await ctx.scheduler.runAfter(0, internal.wallet.executePayout, { withdrawalId: w._id });
+    await createNotification(ctx, {
+      userId: w.userId,
+      type: "payment",
+      title: "Virement vérifié — il repart",
+      body: `Ton paiement de ${w.amountCents / 100} € a été validé et part vers ton compte bancaire.`,
+      link: "/portefeuille",
+    });
+    await logSecurityEvent(ctx, {
+      type: "payout.hold_resolved",
+      severity: "info",
+      userId: user._id,
+      targetType: "withdrawal",
+      targetId: w._id,
+      details: args.approve ? "Virement autorisé après vérification." : "Virement refusé, montant restitué.",
+    });
+    return { resolved: true as const, refunded: false as const };
   },
 });
 
