@@ -186,6 +186,127 @@ export const updateProfile = mutation({
   },
 });
 
+/**
+ * Change the account type (teen / adult / parent / organization) — for users
+ * who signed up under the wrong category.
+ *
+ * Safety rules:
+ * - staff accounts (admin/moderator) can never be self-switched;
+ * - becoming a teen requires a birth date and the age ≥ 15 platform floor;
+ * - role-specific data is reset so no capability leaks across roles
+ *   (teen bank account, parent links, guardian payout account);
+ * - minors get the hardened privacy defaults re-applied automatically.
+ */
+export const changeAccountType = mutation({
+  args: {
+    accountType: v.union(
+      v.literal("teen"),
+      v.literal("adult"),
+      v.literal("parent"),
+      v.literal("organization"),
+    ),
+    birthDate: v.optional(v.string()), // required when switching to teen
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (user.accountType === "admin" || user.accountType === "moderator") {
+      throw new Error(
+        "FORBIDDEN: un compte staff ne peut pas changer de catégorie depuis l'application.",
+      );
+    }
+    const profile = await getProfile(ctx, user._id);
+    if (!profile) throw new Error("NO_PROFILE");
+    if (profile.status !== "active") throw new Error("COMPTE_SUSPENDU");
+
+    const rl = await consumeRateLimit(ctx, "accountTypeChange", user._id);
+    if (!rl.ok) {
+      throw new Error("Trop de changements — réessaie plus tard (limite : 3 par jour).");
+    }
+
+    if (profile.accountType === args.accountType) {
+      return { changed: false, accountType: args.accountType };
+    }
+
+    const wasTeen = profile.accountType === "teen";
+    const wasParent = profile.accountType === "parent";
+    const becomesTeen = args.accountType === "teen";
+
+    if (becomesTeen) {
+      if (!args.birthDate) {
+        throw new Error("La date de naissance est obligatoire pour un compte adolescent.");
+      }
+      const age = computeAge(args.birthDate);
+      if (age === null) {
+        throw new Error("Date de naissance invalide.");
+      }
+      if (age < 15) {
+        throw new Error(
+          "FORBIDDEN: À LA PIÈCE est réservé aux adolescents de 15 ans et plus.",
+        );
+      }
+    }
+
+    // Reset role-specific data so nothing leaks across categories.
+    const patch: Record<string, unknown> = {
+      accountType: args.accountType,
+    };
+    if (wasTeen) {
+      patch.birthDate = undefined;
+      patch.bankAccount = undefined;
+      patch.bankConsent = undefined;
+      patch.bankAccountChangedAt = undefined;
+      patch.interests = undefined;
+      patch.availability = undefined;
+    }
+    if (wasParent) {
+      patch.linkedTeenIds = undefined;
+      patch.payoutStripeAccountId = undefined;
+      patch.verifiedParent = undefined;
+    }
+    if (becomesTeen) {
+      patch.birthDate = args.birthDate;
+      // Friendly defaults per role (avatar only if never customized).
+      patch.interests = undefined;
+    }
+    await ctx.db.patch(profile._id, patch);
+
+    // Keep users.accountType in sync — routing and guards read it too.
+    await ctx.db.patch(user._id, { accountType: args.accountType });
+
+    // Re-apply the matching privacy defaults (minors hardened, others standard).
+    const settings = await getSettings(ctx, user._id);
+    if (settings) {
+      await ctx.db.patch(settings._id, becomesTeen
+        ? { profileVisibility: "private", shareLocation: "hidden", allowMessages: false, showOnLeaderboard: false }
+        : { profileVisibility: "public", shareLocation: "zone", allowMessages: true, showOnLeaderboard: true });
+    }
+
+    await logSecurityEvent(ctx, {
+      type: SECURITY_EVENTS.ACCOUNT_TYPE_CHANGED,
+      severity: "warning",
+      userId: user._id,
+      details: `Catégorie de compte changée : ${profile.accountType} → ${args.accountType}.`,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      type: "system",
+      title: "Type de compte modifié",
+      body:
+        args.accountType === "teen"
+          ? "Ton compte est maintenant un compte adolescent. Tes données spécifiques à l'ancien compte ont été réinitialisées."
+          : "Ton compte est maintenant un compte « " +
+            (args.accountType === "adult" ? "Adulte" : args.accountType === "parent" ? "Parent" : "Organisation") +
+            " ». Les données propres à l'ancienne catégorie ont été réinitialisées.",
+      link: "/profil",
+      read: false,
+      createdAt: Date.now(),
+    });
+
+    return { changed: true, accountType: args.accountType };
+  },
+});
+
 /** Update user settings; minors cannot unlock hardened protections. */
 export const updateSettings = mutation({
   args: {

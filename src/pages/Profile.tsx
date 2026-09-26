@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AVATAR_CHOICES, DataIcon, ICONS } from "@/components/icons";
 import { euros, formatDateShort, formatDateTime, friendlyError } from "@/lib/format";
-import { BadgeCheck, CalendarCheck, Check, FileText, Lock, Pencil, Star, Trophy, Wallet, Zap } from "lucide-react";
+import { BadgeCheck, Building2, CalendarCheck, Check, FileText, GraduationCap, HeartHandshake, Lock, Pencil, Star, Trophy, UserRound, Wallet, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -32,7 +32,47 @@ export default function Profile() {
   const [avatar, setAvatar] = useState(profile?.avatarIcon ?? "graduation-cap");
   const [saving, setSaving] = useState(false);
 
+  // Account type change (wrong category at signup)
+  const changeAccountType = useMutation(api.profiles.changeAccountType);
+  const [typeOpen, setTypeOpen] = useState(false);
+  const [newType, setNewType] = useState<"teen" | "adult" | "parent" | "organization" | null>(null);
+  const [newBirthDate, setNewBirthDate] = useState("");
+  const [changingType, setChangingType] = useState(false);
+
   const isTeen = user?.accountType === "teen";
+
+  const ACCOUNT_TYPE_OPTIONS = [
+    { id: "teen" as const, icon: GraduationCap, title: "Adolescent", desc: "Réalise des missions et gagne de l'argent." },
+    { id: "adult" as const, icon: UserRound, title: "Adulte", desc: "Publie des missions et trouve de l'aide." },
+    { id: "parent" as const, icon: HeartHandshake, title: "Parent / responsable", desc: "Accompagne un adolescent." },
+    { id: "organization" as const, icon: Building2, title: "Entreprise / organisation", desc: "Association, commerce ou entreprise." },
+  ];
+  const currentTypeLabel =
+    ACCOUNT_TYPE_OPTIONS.find((o) => o.id === profile?.accountType)?.title ??
+    (profile?.accountType === "admin" || profile?.accountType === "moderator" ? "Staff" : "—");
+
+  const handleChangeType = async () => {
+    if (!newType || newType === profile?.accountType) return;
+    if (newType === "teen" && !newBirthDate) {
+      toast.error("Indique la date de naissance pour un compte adolescent.");
+      return;
+    }
+    setChangingType(true);
+    try {
+      await changeAccountType({
+        accountType: newType,
+        birthDate: newType === "teen" ? newBirthDate : undefined,
+      });
+      toast.success("Type de compte modifié — rechargement…");
+      setTypeOpen(false);
+      // Full reload: role-specific queries, guards and navigation all re-derive cleanly.
+      setTimeout(() => window.location.reload(), 400);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setChangingType(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -130,6 +170,26 @@ export default function Profile() {
             )}
           </CardContent>
         </Card>
+
+        {/* Account type — self-service fix when the wrong category was chosen at signup */}
+        {profile.accountType !== "admin" && profile.accountType !== "moderator" && (
+          <Card className="card-shadow border-border/60">
+            <CardContent className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type de compte</p>
+                  <p className="font-display text-lg font-bold">{currentTypeLabel}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Erreur au moment de l'inscription ? Change de catégorie ici — les données propres à l'ancienne catégorie seront réinitialisées.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => { setNewType(null); setNewBirthDate(""); setTypeOpen(true); }}>
+                  <Pencil className="size-4" /> Changer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Teen: game profile — XP, niveau, badges */}
         {isTeen && (
@@ -290,6 +350,71 @@ export default function Profile() {
             <DialogFooter>
               <Button variant="ghost" onClick={() => setEditOpen(false)}>Annuler</Button>
               <Button onClick={handleSave} disabled={saving}>Enregistrer</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Account type dialog */}
+        <Dialog open={typeOpen} onOpenChange={setTypeOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Changer de type de compte</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Choisis la catégorie qui te correspond vraiment.
+              </p>
+              <div className="grid gap-2">
+                {ACCOUNT_TYPE_OPTIONS.map((o) => {
+                  const Icon = o.icon;
+                  const current = o.id === profile?.accountType;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => setNewType(o.id)}
+                      className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                        newType === o.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      } ${current ? "opacity-60" : ""}`}
+                    >
+                      <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${newType === o.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                        <Icon className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                          {o.title}
+                          {current && <Badge variant="secondary" className="text-[10px]">Actuel</Badge>}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">{o.desc}</span>
+                      </span>
+                      {newType === o.id && <Check className="mt-1 size-4 shrink-0 text-primary" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {newType === "teen" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="newBirthDate">Date de naissance *</Label>
+                  <Input
+                    id="newBirthDate"
+                    type="date"
+                    value={newBirthDate}
+                    onChange={(e) => setNewBirthDate(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Réservé aux 15 ans et plus — elle adapte les missions autorisées.</p>
+                </div>
+              )}
+              <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                Les données liées à l'ancienne catégorie seront réinitialisées (ex. compte bancaire ado, lien parent, disponibilités). Tes missions et paiements en cours ne sont pas affectés.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setTypeOpen(false)}>Annuler</Button>
+              <Button onClick={handleChangeType} disabled={changingType || !newType || newType === profile?.accountType}>
+                {changingType ? "Modification…" : "Confirmer le changement"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
