@@ -45,10 +45,13 @@ export async function effectiveAge(ctx: QueryCtx, user: Doc<"users">): Promise<n
 }
 
 /**
- * Does this teen have an approved parent link (parental supervision)?
- * Parental approval is required for restricted missions — safety rule, never bypassed.
+ * Does this teen have parental authorization for missions?
+ * Two sources count: the parental discharge accepted at signup (covers all
+ * mission types for the 12–17 range) or an approved parent link.
  */
 export async function hasApprovedParent(ctx: QueryCtx, teenUserId: Id<"users">): Promise<boolean> {
+  const profile = await getProfile(ctx, teenUserId);
+  if (profile?.parentalDischarge?.accepted) return true;
   const link = await ctx.db
     .query("parentLinks")
     .withIndex("by_teen", (q) => q.eq("teenUserId", teenUserId))

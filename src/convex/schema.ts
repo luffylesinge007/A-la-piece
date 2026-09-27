@@ -125,6 +125,19 @@ const schema = defineSchema(
       ),
       /** Anti-fraud: when the payout account last changed (drives the security delay). */
       bankAccountChangedAt: v.optional(v.number()),
+      /**
+       * Parental discharge (décharge parentale), accepted by the guardian at
+       * account creation: authorizes the 12–17 year old to work on the platform
+       * and to take all mission types. Timestamps only — the acceptance itself
+       * is a deliberate UI action, stored for accountability.
+       */
+      parentalDischarge: v.optional(
+        v.object({
+          accepted: v.boolean(),
+          guardianName: v.optional(v.string()),
+          acceptedAt: v.number(),
+        }),
+      ),
       // moderation
       status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("blocked"))),
       /** Security: last password/email/phone sensitive change (timestamp only). */

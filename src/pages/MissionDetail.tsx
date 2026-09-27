@@ -318,7 +318,7 @@ export default function MissionDetail() {
               <CardContent className="flex items-center gap-3 p-4">
                 <TriangleAlert className="size-5 shrink-0 text-rose-500" />
                 <p className="text-sm">
-                  Cette mission est réservée aux utilisateurs majeurs. Elle n'est pas accessible depuis ton compte.
+                  Cette mission présente un risque élevé : une autorisation parentale renforcée est nécessaire depuis ton compte.
                 </p>
               </CardContent>
             </Card>

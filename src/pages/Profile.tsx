@@ -403,7 +403,7 @@ export default function Profile() {
                     value={newBirthDate}
                     onChange={(e) => setNewBirthDate(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">Réservé aux 15 ans et plus — elle adapte les missions autorisées.</p>
+                  <p className="text-xs text-muted-foreground">Réservé aux 12–17 ans — elle adapte les missions autorisées.</p>
                 </div>
               )}
               <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">

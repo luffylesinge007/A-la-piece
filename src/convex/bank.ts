@@ -60,7 +60,9 @@ export const myBankAccount = query({
     if (user.accountType !== "teen") return null;
     const profile = await getProfile(ctx, user._id);
     const age = computeAge(profile?.birthDate);
-    const needsConsent = age === null || age < 16;
+    // Under-14: the payout feature itself needs a specific guardian consent
+    // (independent from the signup discharge, per provider rules).
+    const needsConsent = age === null || age < 14;
     const consent = profile?.bankConsent;
     return {
       account: profile?.bankAccount
@@ -244,9 +246,9 @@ export const confirmBankAccount = mutation({
       country,
     });
 
-    // Under-16: request parental consent for the feature (once).
+    // Under-14: request parental consent for the payout feature (once).
     const age = computeAge(profile.birthDate);
-    if (age === null || age < 16) {
+    if (age === null || age < 14) {
       const current = profile.bankConsent;
       if (!current || current.status === "declined") {
         const link = await ctx.db

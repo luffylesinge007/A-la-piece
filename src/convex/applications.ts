@@ -110,7 +110,7 @@ export const apply = mutation({
     const access = evaluateTeenAccess(mission, age);
     if (!canTeenApply(access, hasParent)) {
       if (access.level === "adults_only") {
-        throw new Error("FORBIDDEN: cette mission est réservée aux majeurs.");
+        throw new Error("FORBIDDEN: cette mission est réservée aux utilisateurs de 18 ans et plus.");
       }
       if (access.level === "forbidden") {
         throw new Error("FORBIDDEN: cette mission est interdite aux mineurs.");
@@ -211,7 +211,7 @@ export const claimQuick = mutation({
     const access = evaluateTeenAccess(mission, age);
     if (!canTeenApply(access, hasParent)) {
       if (access.level === "adults_only") {
-        throw new Error("FORBIDDEN: cette mission est réservée aux majeurs.");
+        throw new Error("FORBIDDEN: cette mission est réservée aux utilisateurs de 18 ans et plus.");
       }
       if (access.level === "forbidden") {
         throw new Error("FORBIDDEN: cette mission est interdite aux mineurs.");

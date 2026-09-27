@@ -50,15 +50,18 @@ function mission(overrides: Partial<Parameters<typeof evaluateTeenAccess>[0]> = 
 }
 
 describe("evaluateTeenAccess", () => {
-  test("high-risk categories are adults-only regardless of age", () => {
+  test("high-risk categories are open to 12–17 but flagged for parental vigilance", () => {
     for (const slug of ["babysitting", "bricolage", "livraison"]) {
-      const access = evaluateTeenAccess(mission({ categorySlug: slug }), 17);
-      expect(access.level).toBe("adults_only");
+      const access = evaluateTeenAccess(mission({ categorySlug: slug }), 15);
+      expect(access.level).not.toBe("adults_only");
+      expect(access.reasons.some((r) => r.includes("risque élevé"))).toBe(true);
     }
   });
 
-  test("explicit high riskLevel overrides even a teen-friendly category", () => {
-    expect(evaluateTeenAccess(mission({ riskLevel: "high" }), 17).level).toBe("adults_only");
+  test("explicit high riskLevel adds the parental-vigilance reason, never blocks", () => {
+    const access = evaluateTeenAccess(mission({ riskLevel: "high" }), 15);
+    expect(access.level).not.toBe("adults_only");
+    expect(access.reasons.some((r) => r.includes("supervision parentale"))).toBe(true);
   });
 
   test("unverified age always requires parental approval (never auto-allowed)", () => {
@@ -72,34 +75,34 @@ describe("evaluateTeenAccess", () => {
     expect(evaluateTeenAccess(mission(), 25).level).toBe("allowed");
   });
 
-  test("typical teen mission (14 y/o, daytime, low risk) is allowed", () => {
-    expect(evaluateTeenAccess(mission({ scheduledTime: "14:00" }), 14).level).toBe("allowed");
+  test("typical teen mission (12 y/o, daytime, low risk) is allowed", () => {
+    expect(evaluateTeenAccess(mission({ scheduledTime: "14:00" }), 12).level).toBe("allowed");
   });
 
-  test("under 16: mission ending after 20:00 requires parental approval", () => {
+  test("12–13: mission ending after 20:00 requires parental approval", () => {
     // 19:45 + 60 min → ends 20:45.
-    const access = evaluateTeenAccess(mission({ scheduledTime: "19:45" }), 15);
+    const access = evaluateTeenAccess(mission({ scheduledTime: "19:45" }), 13);
     expect(access.level).toBe("parental_approval");
     expect(access.reasons.some((r) => r.includes("20h00"))).toBe(true);
   });
 
-  test("16–17: mission ending after 22:00 requires parental approval", () => {
+  test("14–17: mission ending after 22:00 requires parental approval", () => {
     // 21:30 + 60 min → ends 22:30.
     const access = evaluateTeenAccess(mission({ scheduledTime: "21:30" }), 16);
     expect(access.level).toBe("parental_approval");
     expect(access.reasons.some((r) => r.includes("22h00"))).toBe(true);
   });
 
-  test("duration above the category cap for minors raises a reason", () => {
+  test("duration above the category cap raises a reason", () => {
     // animaux caps minors at 120 min.
     const access = evaluateTeenAccess(mission({ durationMin: 150 }), 15);
     expect(access.reasons.some((r) => r.includes("120 min"))).toBe(true);
     expect(access.level).toBe("parental_approval");
   });
 
-  test("boundary: exactly 20:00 end for under-16 stays allowed", () => {
+  test("boundary: exactly 20:00 end for under-14 stays allowed", () => {
     // 19:00 + 60 min → ends 20:00 sharp, not after.
-    expect(evaluateTeenAccess(mission({ scheduledTime: "19:00" }), 15).level).toBe("allowed");
+    expect(evaluateTeenAccess(mission({ scheduledTime: "19:00" }), 13).level).toBe("allowed");
   });
 });
 

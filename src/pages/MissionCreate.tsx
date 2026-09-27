@@ -456,7 +456,7 @@ export default function MissionCreate() {
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
                 <span>
-                  Le niveau d'accès (autorisée / autorisation nécessaire / réservée aux majeurs) est calculé automatiquement
+                  Le niveau d'accès (autorisée / autorisation nécessaire) est calculé automatiquement
                   à la publication selon l'âge, la catégorie et l'horaire.
                 </span>
               </p>

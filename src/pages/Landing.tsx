@@ -36,8 +36,8 @@ const DEMO_MISSIONS: { icon: LucideIcon; title: string; price: string; duration:
     price: "35 €",
     duration: "2 h 30",
     zone: "à ~2 km",
-    tag: "Réservée aux majeurs",
-    tagClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+    tag: "Risque élevé — accord parental",
+    tagClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
 ];
 
@@ -242,10 +242,10 @@ export default function Landing() {
             </p>
             <ul className="mt-6 space-y-3 text-sm">
               {[
-                { icon: CircleCheck, tone: "text-emerald-600 dark:text-emerald-400", text: "Autorisée — adaptée à ton âge et à ton profil" },
+                { icon: CircleCheck, tone: "text-emerald-600 dark:text-emerald-400", text: "Autorisée — adaptée à ton âge (12–17 ans) et à ton profil" },
                 { icon: CircleDot, tone: "text-amber-600 dark:text-amber-400", text: "Autorisation nécessaire — un responsable valide avant candidature" },
-                { icon: Ban, tone: "text-rose-600 dark:text-rose-400", text: "Réservée aux majeurs — bloquée côté serveur, sans exception" },
-                { icon: Lock, tone: "text-zinc-500", text: "Interdite — non publiée pour les mineurs" },
+                { icon: Ban, tone: "text-rose-600 dark:text-rose-400", text: "Risque élevé — accord parental renforcé exigé" },
+                { icon: Lock, tone: "text-zinc-500", text: "Interdite — jamais publiée sans contrôle" },
               ].map((rule) => (
                 <li key={rule.text} className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2.5 card-shadow">
                   <rule.icon className={`mt-0.5 size-4 shrink-0 ${rule.tone}`} />
@@ -301,7 +301,7 @@ export default function Landing() {
           {/* Stats strip */}
           <div className="mt-14 grid gap-4 rounded-2xl border bg-card p-8 card-shadow sm:grid-cols-3">
             {[
-              { value: "15–17", label: "tranche d'âge ado prioritaire" },
+              { value: "12–17", label: "tranche d'âge ado prioritaire" },
               { value: "3", label: "niveaux d'accès évalués par mission" },
               { value: "100 %", label: "des paiements passent par Stripe Checkout" },
             ].map((s) => (

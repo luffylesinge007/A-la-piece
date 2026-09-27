@@ -305,7 +305,7 @@ export const createMission = mutation({
         scheduledTime: args.scheduledTime,
         durationMin: args.durationMin,
       },
-      16, // reference age: a 16-year-old — the most common case
+      14, // reference age: a 14-year-old — the most common case
     );
     const allowedForTeens = accessForTeens.level !== "adults_only";
 

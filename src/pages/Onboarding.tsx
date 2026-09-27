@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
-import { GraduationCap, Loader2, ArrowRight, ArrowLeft, Building2, HeartHandshake, ShieldCheck, UserRound, Lock, type LucideIcon } from "lucide-react";
+import { GraduationCap, Loader2, ArrowRight, ArrowLeft, Building2, HeartHandshake, ShieldCheck, UserRound, Lock, FileSignature, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -45,6 +45,8 @@ export default function Onboarding() {
   const [skills, setSkills] = useState<string[]>([]);
   const [availability, setAvailability] = useState<string[]>([]);
   const [parentEmail, setParentEmail] = useState("");
+  const [dischargeName, setDischargeName] = useState("");
+  const [dischargeAccepted, setDischargeAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const completeOnboarding = useMutation(api.profiles.completeOnboarding);
@@ -98,6 +100,10 @@ export default function Onboarding() {
       toast.error("La date de naissance permet d'adapter les missions autorisées.");
       return;
     }
+    if (role === "teen" && !dischargeAccepted) {
+      toast.error("La décharge parentale doit être acceptée pour créer un compte ado.");
+      return;
+    }
     setSaving(true);
     try {
       await completeOnboarding({
@@ -111,6 +117,10 @@ export default function Onboarding() {
         interests: interests.length ? interests : undefined,
         skills: skills.length ? skills : undefined,
         availability: availability.length ? availability : undefined,
+        parentalDischarge:
+          role === "teen" && dischargeAccepted
+            ? { accepted: true, guardianName: dischargeName.trim() || undefined }
+            : undefined,
       });
       if (role === "teen") {
         setStep("parent-link");
@@ -222,8 +232,51 @@ export default function Onboarding() {
                   <Label htmlFor="birthDate">Date de naissance *</Label>
                   <Input id="birthDate" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Lock className="size-3" /> Jamais visible publiquement. Sert uniquement à évaluer les missions autorisées.
+                    <Lock className="size-3" /> Jamais visible publiquement. Réservé aux 12–17 ans — sert à évaluer les missions autorisées.
                   </p>
+                </div>
+              )}
+
+              {role === "teen" && (
+                <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
+                  <div className="flex items-start gap-2.5">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <FileSignature className="size-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold">Décharge parentale obligatoire</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Le responsable légal de l'adolescent confirme par la présente :
+                        il l'autorise à réaliser des missions rémunérées sur À LA PIÈCE,
+                        <strong> y compris toutes les catégories de missions</strong> (animaux,
+                        jardinage, garde d'enfants, bricolage, livraison, etc.), et accepte
+                        que les gains soient versés selon les règles de la plateforme.
+                        La date de naissance reste privée et les paiements passent toujours
+                        par la plateforme.
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        <Input
+                          value={dischargeName}
+                          onChange={(e) => setDischargeName(e.target.value)}
+                          placeholder="Nom du responsable légal"
+                          maxLength={60}
+                        />
+                        <label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed">
+                          <input
+                            type="checkbox"
+                            checked={dischargeAccepted}
+                            onChange={(e) => setDischargeAccepted(e.target.checked)}
+                            className="mt-0.5 size-4 accent-primary"
+                          />
+                          <span>
+                            Je suis le responsable légal de cet adolescent et j'accepte cette
+                            décharge : il peut réaliser <strong>toutes les missions</strong> de
+                            la plateforme.
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

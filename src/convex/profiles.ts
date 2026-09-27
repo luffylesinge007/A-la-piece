@@ -7,7 +7,7 @@ import {
   hasApprovedParent,
   requireUser,
 } from "./lib/helpers";
-import { computeAge } from "./lib/safety";
+import { computeAge, MIN_TEEN_AGE } from "./lib/safety";
 import {
   consumeRateLimit,
   countActiveSessions,
@@ -81,6 +81,18 @@ export const completeOnboarding = mutation({
     interests: v.optional(v.array(v.string())),
     skills: v.optional(v.array(v.string())),
     availability: v.optional(v.array(v.string())),
+    /**
+     * Parental discharge (décharge parentale) — required for teen accounts:
+     * the guardian authorizes the minor to work on the platform and take all
+     * mission types. Enforced server-side; the client checkbox is only UX.
+     */
+    parentalDischarge: v.optional(
+      v.object({
+        accepted: v.boolean(),
+        guardianName: v.optional(v.string()),
+        acceptedAt: v.optional(v.number()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -89,14 +101,19 @@ export const completeOnboarding = mutation({
       if (existing) return existing._id;
     }
 
-    // Safety: a teen under 15 may not use the platform at all.
+    // Safety: a teen under 12 may not use the platform at all.
     if (args.accountType === "teen" && args.birthDate) {
       const age = computeAge(args.birthDate);
-      if (age !== null && age < 15) {
+      if (age !== null && age < MIN_TEEN_AGE) {
         throw new Error(
-          "FORBIDDEN: À LA PIÈCE est réservé aux adolescents de 15 ans et plus.",
+          `FORBIDDEN: À LA PIÈCE est réservé aux adolescents de ${MIN_TEEN_AGE} à 17 ans.`,
         );
       }
+    }    // Parental discharge: mandatory for teen accounts (server-enforced).
+    if (args.accountType === "teen" && !args.parentalDischarge?.accepted) {
+      throw new Error(
+        "La décharge parentale est obligatoire : un responsable doit autoriser les missions.",
+      );
     }
 
     const now = Date.now();
@@ -115,6 +132,17 @@ export const completeOnboarding = mutation({
       // Email is verified by the OTP sign-in flow itself.
       verifiedEmail: user.emailVerificationTime !== undefined,
       status: "active",
+      // Parental discharge (teen accounts only, validated above).
+      parentalDischarge:
+        args.accountType === "teen" && args.parentalDischarge?.accepted
+          ? {
+              accepted: true,
+              guardianName: args.parentalDischarge.guardianName
+                ? sanitizeText(args.parentalDischarge.guardianName, 60)
+                : undefined,
+              acceptedAt: now,
+            }
+          : undefined,
     });
 
     // Minors get hardened privacy defaults — never opt-in.
@@ -208,6 +236,14 @@ export const changeAccountType = mutation({
       v.literal("organization"),
     ),
     birthDate: v.optional(v.string()), // required when switching to teen
+    /** Required when switching to teen — same rule as at signup. */
+    parentalDischarge: v.optional(
+      v.object({
+        accepted: v.boolean(),
+        guardianName: v.optional(v.string()),
+        acceptedAt: v.optional(v.number()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -246,9 +282,14 @@ export const changeAccountType = mutation({
       if (age === null) {
         throw new Error("Date de naissance invalide.");
       }
-      if (age < 15) {
+      if (age < MIN_TEEN_AGE) {
         throw new Error(
-          "FORBIDDEN: À LA PIÈCE est réservé aux adolescents de 15 ans et plus.",
+          `FORBIDDEN: À LA PIÈCE est réservé aux adolescents de ${MIN_TEEN_AGE} à 17 ans.`,
+        );
+      }
+      if (!args.parentalDischarge?.accepted) {
+        throw new Error(
+          "La décharge parentale est obligatoire pour un compte adolescent.",
         );
       }
     }
@@ -272,8 +313,19 @@ export const changeAccountType = mutation({
     }
     if (becomesTeen) {
       patch.birthDate = args.birthDate;
+      // Store the discharge accepted in the switch dialog (validated above).
+      patch.parentalDischarge = {
+        accepted: true,
+        guardianName: args.parentalDischarge?.guardianName
+          ? sanitizeText(args.parentalDischarge.guardianName, 60)
+          : undefined,
+        acceptedAt: Date.now(),
+      };
       // Friendly defaults per role (avatar only if never customized).
       patch.interests = undefined;
+    }
+    if (wasTeen && !becomesTeen) {
+      patch.parentalDischarge = undefined;
     }
     await ctx.db.patch(profile._id, patch);
 
