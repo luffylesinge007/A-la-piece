@@ -46,12 +46,20 @@ export async function effectiveAge(ctx: QueryCtx, user: Doc<"users">): Promise<n
 
 /**
  * Does this teen have parental authorization for missions?
- * Two sources count: the parental discharge accepted at signup (covers all
- * mission types for the 12–17 range) or an approved parent link.
+ * Three sources count:
+ * 1. a parental discharge accepted at signup AND the guardian's identity
+ *    verified (ID card, passport, driver's license or recognition video,
+ *    reviewed by moderation) — so a child can never self-authorize;
+ * 2. an approved parent link (the guardian has their own verified account).
  */
 export async function hasApprovedParent(ctx: QueryCtx, teenUserId: Id<"users">): Promise<boolean> {
   const profile = await getProfile(ctx, teenUserId);
-  if (profile?.parentalDischarge?.accepted) return true;
+  if (
+    profile?.parentalDischarge?.accepted &&
+    profile?.guardianIdentityVerified === true
+  ) {
+    return true;
+  }
   const link = await ctx.db
     .query("parentLinks")
     .withIndex("by_teen", (q) => q.eq("teenUserId", teenUserId))

@@ -18,6 +18,7 @@ import type * as bookings from "../bookings.js";
 import type * as chat from "../chat.js";
 import type * as gamification from "../gamification.js";
 import type * as http from "../http.js";
+import type * as identity from "../identity.js";
 import type * as lib_fraud from "../lib/fraud.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_legacy_icons from "../lib/legacy_icons.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   gamification: typeof gamification;
   http: typeof http;
+  identity: typeof identity;
   "lib/fraud": typeof lib_fraud;
   "lib/helpers": typeof lib_helpers;
   "lib/legacy_icons": typeof lib_legacy_icons;

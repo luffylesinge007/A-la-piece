@@ -123,7 +123,8 @@ export default function Onboarding() {
             : undefined,
       });
       if (role === "teen") {
-        setStep("parent-link");
+        toast.success("Compte créé — dernière étape : vérifier l'identité du responsable", { duration: 6000 });
+        navigate("/securite");
       } else {
         toast.success("Bienvenue sur À LA PIÈCE");
         navigate(role === "parent" ? "/securite" : "/accueil");
@@ -253,6 +254,15 @@ export default function Onboarding() {
                         que les gains soient versés selon les règles de la plateforme.
                         La date de naissance reste privée et les paiements passent toujours
                         par la plateforme.
+                      </p>
+                      <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                        <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
+                        <span>
+                          Pour être <strong>valide</strong>, la décharge doit être confirmée par la
+                          vérification de l'identité du responsable (pièce d'identité, permis de
+                          conduire, passeport ou courte vidéo de reconnaissance) — examinée par notre
+                          équipe. Sans cela, l'adolescent ne pourra pas candidater aux missions.
+                        </span>
                       </p>
                       <div className="mt-3 space-y-2">
                         <Input

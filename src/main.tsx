@@ -29,6 +29,7 @@ const Wallet = lazy(() => import("./pages/Wallet.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 const Safety = lazy(() => import("./pages/Safety.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
+const AdminVerifications = lazy(() => import("./pages/AdminVerifications.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -97,6 +98,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/profil" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/securite" element={<RequireAuth><Safety /></RequireAuth>} />
               <Route path="/parametres" element={<RequireAuth><Settings /></RequireAuth>} />
+              <Route path="/admin" element={<RequireAuth><AdminVerifications /></RequireAuth>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

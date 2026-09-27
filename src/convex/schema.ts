@@ -130,6 +130,7 @@ const schema = defineSchema(
        * account creation: authorizes the 12–17 year old to work on the platform
        * and to take all mission types. Timestamps only — the acceptance itself
        * is a deliberate UI action, stored for accountability.
+       * It only takes effect once the guardian's identity is verified.
        */
       parentalDischarge: v.optional(
         v.object({
@@ -138,6 +139,8 @@ const schema = defineSchema(
           acceptedAt: v.number(),
         }),
       ),
+      /** True once a guardian identity document has been approved (human review). */
+      guardianIdentityVerified: v.optional(v.boolean()),
       // moderation
       status: v.optional(v.union(v.literal("active"), v.literal("suspended"), v.literal("blocked"))),
       /** Security: last password/email/phone sensitive change (timestamp only). */
@@ -454,6 +457,33 @@ const schema = defineSchema(
       status: v.union(v.literal("pending"), v.literal("cleared"), v.literal("confirmed")),
       createdAt: v.number(),
     }).index("by_status", ["status"]),
+
+    /**
+     * Guardian identity verification: a government ID, driver's license or a
+     * short recognition video, uploaded by the guardian to activate the
+     * parental discharge. The file lives in Convex file storage; only the
+     * storage id and review metadata are kept here. Never shown publicly.
+     */
+    identityVerifications: defineTable({
+      userId: v.id("users"), // uploader (guardian — may act from the teen's device)
+      /** Teen whose discharge this verification covers. */
+      teenUserId: v.optional(v.id("users")),
+      kind: v.union(
+        v.literal("id_card"),
+        v.literal("passport"),
+        v.literal("driver_license"),
+        v.literal("video"),
+      ),
+      storageId: v.id("_storage"),
+      fileName: v.optional(v.string()),
+      status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+      rejectionReason: v.optional(v.string()),
+      reviewerId: v.optional(v.id("users")),
+      submittedAt: v.number(),
+      reviewedAt: v.optional(v.number()),
+    })
+      .index("by_user", ["userId", "submittedAt"])
+      .index("by_status", ["status", "submittedAt"]),
   },
   {
     schemaValidation: false,

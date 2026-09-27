@@ -26,6 +26,9 @@ export const SECURITY_EVENTS = {
   REPORT_AUTO_PRIORITY: "moderation.report_auto_priority",
   RATE_LIMIT: "security.rate_limited",
   ACCOUNT_TYPE_CHANGED: "security.account_type_changed",
+  IDENTITY_SUBMITTED: "identity.submitted",
+  IDENTITY_APPROVED: "identity.approved",
+  IDENTITY_REJECTED: "identity.rejected",
   ACCOUNT_SUSPENDED: "admin.account_suspended",
   DATA_EXPORTED: "gdpr.data_exported",
   DATA_DELETED: "gdpr.data_deleted",
@@ -117,6 +120,10 @@ export const RATE_RULES = {
   bankChange: { max: 3, windowMs: 15 * 60_000, blockAfterViolations: 2, blockMs: 60 * 60_000 },
   /** Account type switches (teen/adult/parent/organization) per account. */
   accountTypeChange: { max: 3, windowMs: 24 * 60 * 60_000, blockAfterViolations: 2, blockMs: 24 * 60 * 60_000 },
+  /** Identity document uploads per account — storage flooding guard. */
+  identityUpload: { max: 5, windowMs: 15 * 60_000 },
+  /** Identity document submissions per account. */
+  identitySubmit: { max: 3, windowMs: 24 * 60 * 60_000 },
 } satisfies Record<string, LimitRule>;
 
 export type RateRuleName = keyof typeof RATE_RULES;

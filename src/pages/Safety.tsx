@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { friendlyError, formatDateTime } from "@/lib/format";
 import { DataIcon } from "@/components/icons";
-import { BadgeCheck, Check, CircleCheck, CircleAlert, HeartHandshake, Link2, PhoneCall, Play, ShieldCheck, Siren, X } from "lucide-react";
-import { useState } from "react";
+import { BadgeCheck, Check, CircleCheck, CircleAlert, CreditCard, FileVideo, HeartHandshake, IdCard, Link2, Loader2, PhoneCall, Play, ShieldCheck, Siren, Upload, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 /** Report categories — kept in sync with src/convex/safety.ts. */
@@ -32,6 +32,14 @@ export default function Safety() {
   const { user, hasApprovedParent } = useAuth();
   const safetyEvents = useQuery(api.safety.mySafetyEvents);
   const family = useQuery(api.safety.familyView, user?.accountType === "parent" ? {} : "skip");
+
+  // Guardian identity verification (activates the parental discharge)
+  const identity = useQuery(api.identity.myStatus, user ? {} : "skip");
+  const generateUploadUrl = useMutation(api.identity.generateUploadUrl);
+  const submitIdentityDoc = useMutation(api.identity.submitDocument);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [idKind, setIdKind] = useState<"id_card" | "passport" | "driver_license" | "video">("id_card");
+  const [uploading, setUploading] = useState(false);
 
   const linkParent = useMutation(api.profiles.linkParent);
   const respondParentLink = useMutation(api.profiles.respondParentLink);
@@ -69,6 +77,36 @@ export default function Safety() {
       toast.success(accept ? "Liaison validée" : "Demande refusée.");
     } catch (error) {
       toast.error(friendlyError(error));
+    }
+  };
+
+  const handleIdentityFile = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux (10 Mo maximum).");
+      return;
+    }
+    setUploading(true);
+    try {
+      const postUrl = await generateUploadUrl();
+      const res = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!res.ok) throw new Error("Échec de l'envoi du fichier.");
+      const { storageId } = await res.json();
+      await submitIdentityDoc({
+        kind: idKind,
+        storageId,
+        fileName: file.name,
+        teenEmail: isTeen ? user?.email : undefined,
+      });
+      toast.success("Document envoyé — il sera examiné par notre équipe.");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -130,6 +168,92 @@ export default function Safety() {
               <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
               <span>L'appel d'urgence passe par le téléphone : l'application ne remplace pas les secours.</span>
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Guardian identity verification — activates the parental discharge */}
+        <Card className="card-shadow border-border/60">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 font-display text-base">
+              <IdCard className="size-4" /> Vérification d'identité du responsable
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {identity?.verified ? (
+              <p className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+                <BadgeCheck className="size-4" /> Identité vérifiée — la décharge parentale est active.
+              </p>
+            ) : identity?.latest?.status === "pending" ? (
+              <p className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                <Loader2 className="size-4 animate-spin" /> Document reçu — vérification en cours par notre équipe (généralement sous 24 h).
+              </p>
+            ) : identity?.latest?.status === "rejected" ? (
+              <div className="space-y-2">
+                <p className="flex items-center gap-2 rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-400">
+                  <X className="size-4" /> Document refusé{identity.latest.rejectionReason ? ` : ${identity.latest.rejectionReason}` : "."}
+                </p>
+                <p className="text-xs text-muted-foreground">Tu peux renvoyer un document plus lisible ci-dessous.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                La décharge parentale n'est active qu'après la vérification de l'identité du responsable.
+                Choisis un moyen et envoie le document (le fichier reste privé, visible uniquement par l'équipe de modération).
+              </p>
+            )}
+
+            {!identity?.verified && (
+              <div className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { id: "id_card" as const, icon: IdCard, label: "Carte d'identité", desc: "Recto — photo nette" },
+                    { id: "passport" as const, icon: CreditCard, label: "Passeport", desc: "Page photo" },
+                    { id: "driver_license" as const, icon: CreditCard, label: "Permis de conduire", desc: "Recto — photo nette" },
+                    { id: "video" as const, icon: FileVideo, label: "Reconnaissance visuelle", desc: "Courte vidéo du visage" },
+                  ].map((k) => {
+                    const Icon = k.icon;
+                    return (
+                      <button
+                        key={k.id}
+                        type="button"
+                        onClick={() => setIdKind(k.id)}
+                        className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                          idKind === k.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                        } ${identity?.latest?.status === "pending" ? "pointer-events-none opacity-50" : ""}`}
+                      >
+                        <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${idKind === k.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                          <Icon className="size-4" />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold">{k.label}</span>
+                          <span className="block text-xs text-muted-foreground">{k.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/mp4,video/webm"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleIdentityFile(f);
+                  }}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || identity?.latest?.status === "pending"}
+                  className="w-full sm:w-auto"
+                >
+                  {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                  {uploading ? "Envoi en cours…" : "Envoyer le document"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Image ou vidéo, 10 Mo max. Le document est supprimé après vérification et n'est jamais visible par d'autres utilisateurs.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
