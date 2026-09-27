@@ -33,6 +33,10 @@ export const myProfile = query({
       settings,
       age,
       hasApprovedParent: hasParent,
+      /** Teen UX: the discharge was accepted at signup (waiting for identity review). */
+      dischargeAccepted: profile?.parentalDischarge?.accepted ?? false,
+      /** Teen UX: the guardian's identity document has been approved by moderation. */
+      identityVerified: profile?.guardianIdentityVerified === true,
       isMinor: user.accountType === "teen" && (age === null || age < 18),
     };
   },
@@ -326,6 +330,7 @@ export const changeAccountType = mutation({
     }
     if (wasTeen && !becomesTeen) {
       patch.parentalDischarge = undefined;
+      patch.guardianIdentityVerified = undefined;
     }
     await ctx.db.patch(profile._id, patch);
 

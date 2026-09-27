@@ -24,7 +24,7 @@ const FALLBACK_CATEGORY = { icon: "pin", label: "Mission" };
 
 export default function MissionDetail() {
   const { id } = useParams();
-  const { user, hasApprovedParent } = useAuth();
+  const { user, hasApprovedParent, dischargeAccepted, identityVerified } = useAuth();
   const navigate = useNavigate();
   const mission = useQuery(
     api.missions.getMission,
@@ -213,7 +213,12 @@ export default function MissionDetail() {
             {mission.access.level === "parental_approval" && !hasApprovedParent && isTeen && (
               <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
                 <Lightbulb className="mr-1 inline size-3.5 text-amber-500" />
-                Ajoute un responsable légal depuis la page <Link to="/securite" className="font-semibold underline">Sécurité</Link>{" "}
+                {!dischargeAccepted
+                  ? "Fais accepter la décharge parentale par ton responsable — voir la page "
+                  : !identityVerified
+                    ? "Ton responsable doit faire vérifier son identité — voir la page "
+                    : "Ajoute un responsable légal depuis la page "}
+                <Link to="/securite" className="font-semibold underline">Sécurité</Link>{" "}
                 pour débloquer les missions soumises à autorisation.
               </p>
             )}
@@ -327,7 +332,11 @@ export default function MissionDetail() {
               <CardContent className="flex items-center gap-3 p-4">
                 <TriangleAlert className="size-5 shrink-0 text-amber-500" />
                 <p className="text-sm">
-                  Autorisation parentale requise avant de candidater. Ajoute un responsable depuis la page Sécurité.
+                  {!dischargeAccepted
+                    ? "La décharge parentale doit être acceptée par ton responsable avant de candidater — depuis la page Sécurité."
+                    : !identityVerified
+                      ? "En attente de validation : le document d'identité de ton responsable est en cours de vérification par notre équipe. Tu pourras candidater dès qu'il sera approuvé."
+                      : "Autorisation parentale requise avant de candidater. Ajoute un responsable depuis la page Sécurité."}
                 </p>
               </CardContent>
             </Card>

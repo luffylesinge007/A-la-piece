@@ -115,8 +115,16 @@ export const apply = mutation({
       if (access.level === "forbidden") {
         throw new Error("FORBIDDEN: cette mission est interdite aux mineurs.");
       }
+      // The only remaining reason: no validated guardian. Distinguish the two
+      // situations so the teen knows exactly what to do next.
+      const profile = await getProfile(ctx, user._id);
+      if (!profile?.parentalDischarge?.accepted) {
+        throw new Error(
+          "FORBIDDEN: la décharge parentale doit d'abord être acceptée par ton responsable (page Sécurité).",
+        );
+      }
       throw new Error(
-        "FORBIDDEN: autorisation parentale requise pour cette mission. Demande à ton responsable de la valider.",
+        "FORBIDDEN: la décharge de ton responsable n'est pas encore validée — son document d'identité doit être vérifié par notre équipe (page Sécurité).",
       );
     }
 
@@ -216,8 +224,14 @@ export const claimQuick = mutation({
       if (access.level === "forbidden") {
         throw new Error("FORBIDDEN: cette mission est interdite aux mineurs.");
       }
+      const profile = await getProfile(ctx, user._id);
+      if (!profile?.parentalDischarge?.accepted) {
+        throw new Error(
+          "FORBIDDEN: la décharge parentale doit d'abord être acceptée par ton responsable (page Sécurité).",
+        );
+      }
       throw new Error(
-        "FORBIDDEN: autorisation parentale requise pour cette mission. Demande à ton responsable de la valider.",
+        "FORBIDDEN: la décharge de ton responsable n'est pas encore validée — son document d'identité doit être vérifié par notre équipe (page Sécurité).",
       );
     }
 

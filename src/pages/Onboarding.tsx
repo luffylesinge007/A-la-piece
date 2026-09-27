@@ -13,6 +13,10 @@ import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/format";
 
+// NOTE: the old "parent-link" third step was removed — teens now land on the
+// Sécurité page right after signup, where the guardian sends his identity
+// document. The trust link can still be added later from the Sécurité page.
+
 type Role = "teen" | "adult" | "parent" | "organization";
 
 const ROLE_CARDS: { id: Role; icon: LucideIcon; title: string; desc: string }[] = [
@@ -32,7 +36,7 @@ export default function Onboarding() {
   const [params] = useSearchParams();
   const preselected = (params.get("as") as Role | null) ?? null;
 
-  const [step, setStep] = useState<"role" | "form" | "parent-link">(preselected ? "form" : "role");
+  const [step, setStep] = useState<"role" | "form">(preselected ? "form" : "role");
   const [role, setRole] = useState<Role>(preselected ?? "teen");
 
   const [firstName, setFirstName] = useState("");
@@ -44,13 +48,11 @@ export default function Onboarding() {
   const [interests, setInterests] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [availability, setAvailability] = useState<string[]>([]);
-  const [parentEmail, setParentEmail] = useState("");
   const [dischargeName, setDischargeName] = useState("");
   const [dischargeAccepted, setDischargeAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const completeOnboarding = useMutation(api.profiles.completeOnboarding);
-  const linkParent = useMutation(api.profiles.linkParent);
 
   useEffect(() => {
     if (!isLoading && user && !needsOnboarding) navigate("/accueil", { replace: true });
@@ -136,25 +138,6 @@ export default function Onboarding() {
     }
   };
 
-  const submitParentLink = async () => {
-    if (!parentEmail.trim()) {
-      navigate("/accueil");
-      return;
-    }
-    setSaving(true);
-    try {
-      await linkParent({ parentEmail: parentEmail.trim() });
-      toast.success("Demande envoyée à ton responsable");
-      navigate("/accueil");
-    } catch (error) {
-      // The account is created; the link can be added later from Sécurité.
-      toast.error(friendlyError(error));
-      navigate("/accueil");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="relative min-h-screen bg-background">
       <div className="hero-grid absolute inset-x-0 top-0 h-64" aria-hidden />
@@ -162,11 +145,11 @@ export default function Onboarding() {
         <div className="mb-8 text-center">
           <span className="font-display text-2xl font-extrabold tracking-tight">À LA PIÈCE</span>
           <div className="mt-2 flex items-center justify-center gap-1.5">
-            {[1, 2, 3].map((s) => (
+            {[1, 2].map((s) => (
               <span
                 key={s}
                 className={`h-1.5 rounded-full transition-all ${
-                  (step === "role" && s === 1) || (step === "form" && s === 2) || (step === "parent-link" && s === 3)
+                  (step === "role" && s === 1) || (step === "form" && s === 2)
                     ? "w-8 bg-primary"
                     : "w-4 bg-border"
                 }`}
@@ -364,44 +347,6 @@ export default function Onboarding() {
           </Card>
         )}
 
-        {step === "parent-link" && (
-          <Card className="card-shadow-lg animate-slide-up border-border/60">
-          <CardContent className="space-y-5 p-6 text-center">
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-              <HeartHandshake className="size-7" />
-            </span>
-            <div>
-              <h1 className="font-display text-2xl font-extrabold">Un adulte de confiance</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Ajoute un parent ou responsable : il pourra autoriser certaines missions
-                soumise à autorisation et recevoir des alertes importantes. Tu pourras aussi le faire plus tard.
-              </p>
-            </div>
-              <div className="space-y-1.5 text-left">
-                <Label htmlFor="parentEmail">Email du responsable (optionnel)</Label>
-                <Input
-                  id="parentEmail"
-                  type="email"
-                  value={parentEmail}
-                  onChange={(e) => setParentEmail(e.target.value)}
-                  placeholder="parent@exemple.fr"
-                />
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <ShieldCheck className="size-3.5 text-emerald-500" />
-                  Ton responsable doit avoir un compte « Parent » sur À LA PIÈCE.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button size="lg" onClick={submitParentLink} disabled={saving}>
-                  {saving ? <Loader2 className="size-4 animate-spin" /> : "Envoyer la demande"}
-                </Button>
-                <Button variant="ghost" onClick={() => navigate("/accueil")} disabled={saving}>
-                  Plus tard
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

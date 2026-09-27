@@ -37,6 +37,8 @@ export default function Profile() {
   const [typeOpen, setTypeOpen] = useState(false);
   const [newType, setNewType] = useState<"teen" | "adult" | "parent" | "organization" | null>(null);
   const [newBirthDate, setNewBirthDate] = useState("");
+  const [dischargeName, setDischargeName] = useState("");
+  const [dischargeAccepted, setDischargeAccepted] = useState(false);
   const [changingType, setChangingType] = useState(false);
 
   const isTeen = user?.accountType === "teen";
@@ -57,11 +59,19 @@ export default function Profile() {
       toast.error("Indique la date de naissance pour un compte adolescent.");
       return;
     }
+    if (newType === "teen" && !dischargeAccepted) {
+      toast.error("La décharge parentale doit être acceptée pour un compte adolescent.");
+      return;
+    }
     setChangingType(true);
     try {
       await changeAccountType({
         accountType: newType,
         birthDate: newType === "teen" ? newBirthDate : undefined,
+        parentalDischarge:
+          newType === "teen" && dischargeAccepted
+            ? { accepted: true, guardianName: dischargeName.trim() || undefined }
+            : undefined,
       });
       toast.success("Type de compte modifié — rechargement…");
       setTypeOpen(false);
@@ -183,7 +193,7 @@ export default function Profile() {
                     Erreur au moment de l'inscription ? Change de catégorie ici — les données propres à l'ancienne catégorie seront réinitialisées.
                   </p>
                 </div>
-                <Button variant="outline" onClick={() => { setNewType(null); setNewBirthDate(""); setTypeOpen(true); }}>
+                <Button variant="outline" onClick={() => { setNewType(null); setNewBirthDate(""); setDischargeName(""); setDischargeAccepted(false); setTypeOpen(true); }}>
                   <Pencil className="size-4" /> Changer
                 </Button>
               </div>
@@ -395,16 +405,45 @@ export default function Profile() {
                 })}
               </div>
               {newType === "teen" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="newBirthDate">Date de naissance *</Label>
-                  <Input
-                    id="newBirthDate"
-                    type="date"
-                    value={newBirthDate}
-                    onChange={(e) => setNewBirthDate(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">Réservé aux 12–17 ans — elle adapte les missions autorisées.</p>
-                </div>
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="newBirthDate">Date de naissance *</Label>
+                    <Input
+                      id="newBirthDate"
+                      type="date"
+                      value={newBirthDate}
+                      onChange={(e) => setNewBirthDate(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Réservé aux 12–17 ans — elle adapte les missions autorisées.</p>
+                  </div>
+                  <div className="space-y-1.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                    <Label htmlFor="dischargeName">Nom du responsable légal *</Label>
+                    <Input
+                      id="dischargeName"
+                      value={dischargeName}
+                      onChange={(e) => setDischargeName(e.target.value)}
+                      placeholder="Nom du responsable légal"
+                      maxLength={60}
+                    />
+                    <label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed">
+                      <input
+                        type="checkbox"
+                        checked={dischargeAccepted}
+                        onChange={(e) => setDischargeAccepted(e.target.checked)}
+                        className="mt-0.5 size-4 accent-primary"
+                      />
+                      <span>
+                        Je suis le responsable légal de cet adolescent et j'accepte la décharge parentale :
+                        il peut réaliser <strong>toutes les missions</strong> de la plateforme.
+                      </span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      La décharge devient active après la vérification de l'identité du responsable
+                      (pièce d'identité, permis, passeport ou vidéo) — à envoyer depuis la page
+                      Sécurité. Sans elle, l'adolescent ne pourra pas candidater.
+                    </p>
+                  </div>
+                </>
               )}
               <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
                 Les données liées à l'ancienne catégorie seront réinitialisées (ex. compte bancaire ado, lien parent, disponibilités). Tes missions et paiements en cours ne sont pas affectés.
@@ -412,7 +451,7 @@ export default function Profile() {
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setTypeOpen(false)}>Annuler</Button>
-              <Button onClick={handleChangeType} disabled={changingType || !newType || newType === profile?.accountType}>
+              <Button onClick={handleChangeType} disabled={changingType || !newType || newType === profile?.accountType || (newType === "teen" && (!newBirthDate || !dischargeAccepted))}>
                 {changingType ? "Modification…" : "Confirmer le changement"}
               </Button>
             </DialogFooter>

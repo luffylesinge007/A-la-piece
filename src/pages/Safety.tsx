@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { friendlyError, formatDateTime } from "@/lib/format";
 import { DataIcon } from "@/components/icons";
-import { BadgeCheck, Check, CircleCheck, CircleAlert, CreditCard, FileVideo, HeartHandshake, IdCard, Link2, Loader2, PhoneCall, Play, ShieldCheck, Siren, Upload, X } from "lucide-react";
+import { BadgeCheck, BookUser, Check, CircleCheck, CircleAlert, CreditCard, FileVideo, HeartHandshake, IdCard, Link2, Loader2, PhoneCall, Play, ShieldCheck, Siren, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -56,6 +56,8 @@ export default function Safety() {
 
   const isTeen = user?.accountType === "teen";
   const isParent = user?.accountType === "parent";
+  /** Only teens (self) and parents (for their teen) can upload the guardian's document. */
+  const canUploadIdentity = isTeen || isParent;
 
   const handleLink = async () => {
     if (!parentEmail.trim()) return;
@@ -172,6 +174,7 @@ export default function Safety() {
         </Card>
 
         {/* Guardian identity verification — activates the parental discharge */}
+        {canUploadIdentity && (
         <Card className="card-shadow border-border/60">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 font-display text-base">
@@ -179,7 +182,9 @@ export default function Safety() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {identity?.verified ? (
+            {!identity ? (
+              <p className="py-1 text-sm text-muted-foreground">Chargement…</p>
+            ) : identity.verified ? (
               <p className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
                 <BadgeCheck className="size-4" /> Identité vérifiée — la décharge parentale est active.
               </p>
@@ -201,12 +206,12 @@ export default function Safety() {
               </p>
             )}
 
-            {!identity?.verified && (
+            {identity && !identity.verified && (
               <div className="space-y-3">
                 <div className="grid gap-2 sm:grid-cols-2">
                   {[
                     { id: "id_card" as const, icon: IdCard, label: "Carte d'identité", desc: "Recto — photo nette" },
-                    { id: "passport" as const, icon: CreditCard, label: "Passeport", desc: "Page photo" },
+                    { id: "passport" as const, icon: BookUser, label: "Passeport", desc: "Page photo" },
                     { id: "driver_license" as const, icon: CreditCard, label: "Permis de conduire", desc: "Recto — photo nette" },
                     { id: "video" as const, icon: FileVideo, label: "Reconnaissance visuelle", desc: "Courte vidéo du visage" },
                   ].map((k) => {
@@ -250,12 +255,16 @@ export default function Safety() {
                   {uploading ? "Envoi en cours…" : "Envoyer le document"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Image ou vidéo, 10 Mo max. Le document est supprimé après vérification et n'est jamais visible par d'autres utilisateurs.
+                  {isParent
+                    ? "Document envoyé par le responsable — l'adolescent est notifié dès la validation. "
+                    : "Le responsable légal doit être la personne sur le document. "}
+                  Image ou vidéo, 10 Mo max. Le fichier reste privé et n'est jamais visible par d'autres utilisateurs.
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Teen: parent link */}
         {isTeen && (

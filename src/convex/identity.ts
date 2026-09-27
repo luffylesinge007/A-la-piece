@@ -117,7 +117,10 @@ export const submitDocument = mutation({
         .query("users")
         .withIndex("email", (q) => q.eq("email", email))
         .first();
-      if (teen) teenUserId = teen._id;
+      if (!teen) {
+        throw new Error("TEEN_INTROUVABLE: aucun compte À LA PIÈCE avec cet email.");
+      }
+      teenUserId = teen._id;
     } else if (user.accountType === "teen") {
       teenUserId = user._id;
     } else {
@@ -237,6 +240,10 @@ export const approve = mutation({
     }
 
     // Activate the discharge on every teen this document covers.
+    // When the document is approved the discharge is confirmed by a human
+    // review of the guardian's identity — including legacy teens whose row
+    // predates the discharge fields (or whose guardian never ticked the box):
+    // the moderation approval *is* the authoritative guardian validation.
     const teenIds = new Set<Id<"users">>();
     if (row.teenUserId) teenIds.add(row.teenUserId);
     const uploader = await ctx.db.get(row.userId);
@@ -246,8 +253,18 @@ export const approve = mutation({
     }
     for (const teenId of teenIds) {
       const teenProfile = await getProfile(ctx, teenId);
-      if (teenProfile?.parentalDischarge?.accepted) {
-        await ctx.db.patch(teenProfile._id, { guardianIdentityVerified: true });
+      if (!teenProfile) continue;
+      const wasActive =
+        teenProfile.parentalDischarge?.accepted && teenProfile.guardianIdentityVerified === true;
+      await ctx.db.patch(teenProfile._id, {
+        parentalDischarge: {
+          accepted: true,
+          guardianName: teenProfile.parentalDischarge?.guardianName ?? "Responsable légal",
+          acceptedAt: teenProfile.parentalDischarge?.acceptedAt ?? Date.now(),
+        },
+        guardianIdentityVerified: true,
+      });
+      if (!wasActive) {
         await ctx.db.insert("notifications", {
           userId: teenId,
           type: "parent",

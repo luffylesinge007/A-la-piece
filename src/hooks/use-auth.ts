@@ -22,6 +22,8 @@ export function useAuth() {
     isMinor: fullProfile?.isMinor ?? false,
     age: fullProfile?.age ?? null,
     hasApprovedParent: fullProfile?.hasApprovedParent ?? false,
+    dischargeAccepted: fullProfile?.dischargeAccepted ?? false,
+    identityVerified: fullProfile?.identityVerified ?? false,
     needsOnboarding: isAuthenticated && !isAuthLoading && user != null && !user.onboarded,
     signIn,
     signOut,
