@@ -132,7 +132,9 @@ export const completeOnboarding = mutation({
       theme: "system",
     });
 
-    await ctx.db.patch(user._id, { onboarded: true });
+    // users.accountType drives role guards (publish, pay, apply…) — keep it
+    // in sync with profiles.accountType at onboarding.
+    await ctx.db.patch(user._id, { accountType: args.accountType, onboarded: true });
 
     await ctx.db.insert("notifications", {
       userId: user._id,
@@ -224,6 +226,11 @@ export const changeAccountType = mutation({
     }
 
     if (profile.accountType === args.accountType) {
+      // Self-heal: accounts created before the users/profiles sync existed may
+      // still miss users.accountType — repair it idempotently.
+      if (user.accountType !== args.accountType) {
+        await ctx.db.patch(user._id, { accountType: args.accountType });
+      }
       return { changed: false, accountType: args.accountType };
     }
 
@@ -304,6 +311,29 @@ export const changeAccountType = mutation({
     });
 
     return { changed: true, accountType: args.accountType };
+  },
+});
+
+/**
+ * One-shot self-repair for accounts created before users.accountType was
+ * written at onboarding: copy the authoritative profiles.accountType onto the
+ * users row. Idempotent and side-effect free when already in sync.
+ */
+export const syncAccountType = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    if (user.accountType !== undefined) return { synced: false };
+    const profile = await getProfile(ctx, user._id);
+    if (!profile) return { synced: false };
+    await ctx.db.patch(user._id, { accountType: profile.accountType });
+    await logSecurityEvent(ctx, {
+      type: SECURITY_EVENTS.ACCOUNT_TYPE_CHANGED,
+      severity: "info",
+      userId: user._id,
+      details: `Synchronisation automatique du type de compte (${profile.accountType}).`,
+    });
+    return { synced: true, accountType: profile.accountType };
   },
 });
 

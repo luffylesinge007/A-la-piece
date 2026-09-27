@@ -4,6 +4,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { AccountTypeSync } from "@/components/account-type-sync";
 import { ConvexReactClient } from "convex/react";
 import { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
@@ -69,6 +70,7 @@ createRoot(document.getElementById("root")!).render(
     <VlyToolbar />
     <InstrumentationProvider>
       <ConvexAuthProvider client={convex}>
+        <AccountTypeSync />
         <BrowserRouter>
           <RouteSyncer />
           <Suspense fallback={<RouteLoading />}>
